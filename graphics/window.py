@@ -264,7 +264,7 @@ class WindowManager:
                     print("[窗口管理] 错误: GRID_UPDATE_REQUEST 事件类型不存在，无法更新网格")
                     return
                 
-                print("[窗口管理] 发布网格更新请求")
+                #print("[窗口管理] 发布网格更新请求")
 
                 self._event_bus.publish(Event(
                     EventType.GRID_UPDATE_REQUEST,

@@ -83,39 +83,65 @@ class VectorFieldCalculator:
         # 预分配结果数组以提高性能
         result = np.zeros_like(grid)
 
-        # 使用与OpenCL一致的方式计算邻居向量（只考虑上下左右四个邻居）
-        # 创建一个与原始网格同样大小的结果数组
-        for y in range(h):
-            for x in range(w):
-                sum_x = 0.0
-                sum_y = 0.0
+        # 使用向量化操作计算邻居向量之和
+        # 创建填充数组来处理边界条件
+        padded_grid = np.pad(grid, ((1, 1), (1, 1), (0, 0)), mode='constant')
 
-                # 处理自身向量
-                if include_self:
-                    sum_x += grid[y, x, 0] * self_weight
-                    sum_y += grid[y, x, 1] * self_weight
+        # 计算四个方向的邻居贡献
+        # 上邻居 (y+1, x)
+        up_neighbors = padded_grid[2:, 1:-1] * neighbor_weight
+        # 下邻居 (y, x)
+        down_neighbors = padded_grid[:-2, 1:-1] * neighbor_weight
+        # 左邻居 (y, x+1)
+        left_neighbors = padded_grid[1:-1, 2:] * neighbor_weight
+        # 右邻居 (y, x)
+        right_neighbors = padded_grid[1:-1, :-2] * neighbor_weight
 
-                # 处理邻居向量（只考虑上下左右四个邻居）
-                # 上
-                if y > 0:
-                    sum_x += grid[y-1, x, 0] * neighbor_weight
-                    sum_y += grid[y-1, x, 1] * neighbor_weight
-                # 下
-                if y < h - 1:
-                    sum_x += grid[y+1, x, 0] * neighbor_weight
-                    sum_y += grid[y+1, x, 1] * neighbor_weight
-                # 左
-                if x > 0:
-                    sum_x += grid[y, x-1, 0] * neighbor_weight
-                    sum_y += grid[y, x-1, 1] * neighbor_weight
-                # 右
-                if x < w - 1:
-                    sum_x += grid[y, x+1, 0] * neighbor_weight
-                    sum_y += grid[y, x+1, 1] * neighbor_weight
+        # 求和邻居贡献
+        result = up_neighbors + down_neighbors + left_neighbors + right_neighbors
 
-                # 存储结果
-                result[y, x, 0] = sum_x
-                result[y, x, 1] = sum_y
+        # 如果包含自身，添加自身贡献
+        if include_self:
+            result += grid * self_weight
+
+        # 如果需要平均值，计算有效邻居数量并归一化
+        if enable_average:
+            # 创建有效邻居计数矩阵
+            neighbor_count = np.ones((h, w), dtype=np.float32) * 4  # 默认4个邻居
+
+            # 边界处理
+            neighbor_count[0, :] -= 1   # 上边界
+            neighbor_count[-1, :] -= 1  # 下边界
+            neighbor_count[:, 0] -= 1   # 左边界
+            neighbor_count[:, -1] -= 1  # 右边界
+
+            # 如果包含自身，邻居数加1
+            if include_self:
+                neighbor_count += 1
+
+            # 归一化
+            result = result / neighbor_count[:, :, np.newaxis]
+
+        # 如果需要权重归一化
+        elif enable_normalization:
+            # 计算每个点的有效权重总和
+            weight_sum = np.ones((h, w), dtype=np.float32) * 4 * neighbor_weight  # 默认4个邻居
+
+            # 边界处理
+            weight_sum[0, :] -= neighbor_weight   # 上边界
+            weight_sum[-1, :] -= neighbor_weight  # 下边界
+            weight_sum[:, 0] -= neighbor_weight   # 左边界
+            weight_sum[:, -1] -= neighbor_weight  # 右边界
+
+            # 如果包含自身，添加自身权重
+            if include_self:
+                weight_sum += self_weight
+
+            # 确保权重总和大于0，避免除以0
+            weight_sum = np.maximum(weight_sum, 0.1)
+
+            # 归一化
+            result = result / weight_sum[:, :, np.newaxis]
 
         # 计算有效邻居数（每个点最多有4个邻居）
         neighbor_count = np.full((h, w), 4, dtype=np.float32)  # 初始化为4（上下左右）

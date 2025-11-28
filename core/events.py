@@ -15,13 +15,21 @@ class EventType(Enum):
     GRID_CLEARED = "grid_cleared"
     GRID_LOADED = "grid_loaded"
     GRID_SAVED = "grid_saved"
+    TOGGLE_GRID = "toggle_grid"
+    CLEAR_GRID = "clear_grid"
 
     # 向量相关事件
     VECTOR_UPDATED = "vector_updated"
+    SET_MAGNITUDE = "set_magnitude"
+    TOGGLE_REVERSE_VECTOR = "toggle_reverse_vector"
 
     # 视图相关事件
     VIEW_CHANGED = "view_changed"
     VIEW_RESET = "view_reset"
+    RESET_VIEW = "reset_view"
+
+    # 工具栏相关事件
+    SET_BRUSH_SIZE = "set_brush_size"
 
     # 应用程序事件
     APP_INITIALIZED = "app_initialized"

@@ -144,7 +144,7 @@ void main() {
             print(f"[渲染器] 初始化失败: {e}")
             raise
 
-    def render_vector_field(self, grid: np.ndarray, cell_size: float = 1.0, 
+    def render_vector_field(self, grid: np.ndarray, cell_size: float = 1.0,
                            cam_x: float = 0.0, cam_y: float = 0.0, cam_zoom: float = 1.0,
                            viewport_width: int = 800, viewport_height: int = 600) -> None:
         """渲染向量场"""
@@ -159,35 +159,58 @@ void main() {
 
         # 准备顶点数据
         h, w = grid.shape[:2]
-        vertices = []
 
-        # 为每个向量创建线段顶点
-        for y in range(h):
-            for x in range(w):
-                vx, vy = grid[y, x]
-                if abs(vx) < 0.001 and abs(vy) < 0.001:
-                    continue  # 跳过零向量
+        # 使用向量化操作准备顶点数据，避免循环
+        # 创建网格坐标
+        y_coords, x_coords = np.mgrid[0:h, 0:w]
 
-                # 起点
-                px = x * cell_size
-                py = y * cell_size
-                vertices.extend([px, py, vector_color[0], vector_color[1], vector_color[2]])
+        # 获取向量分量
+        vx = grid[:, :, 0]
+        vy = grid[:, :, 1]
 
-                # 终点
-                px2 = px + vx
-                py2 = py + vy
-                vertices.extend([px2, py2, vector_color[0], vector_color[1], vector_color[2]])
+        # 创建非零向量掩码
+        mask = (np.abs(vx) > 0.001) | (np.abs(vy) > 0.001)
 
-        # 如果没有向量，直接返回
-        if not vertices:
+        # 如果没有非零向量，直接返回
+        if not np.any(mask):
             return
+
+        # 提取非零向量的坐标和分量
+        non_zero_x = x_coords[mask]
+        non_zero_y = y_coords[mask]
+        non_zero_vx = vx[mask]
+        non_zero_vy = vy[mask]
+
+        # 计算起点和终点坐标
+        start_x = non_zero_x * cell_size
+        start_y = non_zero_y * cell_size
+        end_x = start_x + non_zero_vx
+        end_y = start_y + non_zero_vy
+
+        # 创建顶点数组 - 每个向量需要两个点（起点和终点）
+        # 每个点有5个分量 (x, y, r, g, b)
+        vertices = np.zeros(len(non_zero_x) * 2 * 5, dtype=np.float32)
+
+        # 填充起点数据
+        vertices[0::10] = start_x  # 起点x坐标
+        vertices[1::10] = start_y  # 起点y坐标
+        vertices[2::10] = vector_color[0]  # R
+        vertices[3::10] = vector_color[1]  # G
+        vertices[4::10] = vector_color[2]  # B
+
+        # 填充终点数据
+        vertices[5::10] = end_x  # 终点x坐标
+        vertices[6::10] = end_y  # 终点y坐标
+        vertices[7::10] = vector_color[0]  # R
+        vertices[8::10] = vector_color[1]  # G
+        vertices[9::10] = vector_color[2]  # B
 
         # 绑定VAO和VBO
         glBindVertexArray(self._vao)
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
 
         # 上传顶点数据
-        glBufferData(GL_ARRAY_BUFFER, len(vertices) * 4, np.array(vertices, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_DYNAMIC_DRAW)
 
         # 设置顶点属性
         pos_loc = self._shader_program.get_attribute_location("a_pos")
@@ -332,7 +355,7 @@ void main() {
 vector_field_renderer = VectorFieldRenderer()
 
 # 便捷函数
-def render_vector_field(grid: np.ndarray, cell_size: float = 1.0, 
+def render_vector_field(grid: np.ndarray, cell_size: float = 1.0,
                        cam_x: float = 0.0, cam_y: float = 0.0, cam_zoom: float = 1.0,
                        viewport_width: int = 800, viewport_height: int = 600) -> None:
     """便捷函数：渲染向量场"""

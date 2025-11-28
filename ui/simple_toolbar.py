@@ -5,7 +5,7 @@
 import numpy as np
 from typing import Dict, Any, Optional, Tuple
 from ui.toolbar import Toolbar
-from core.events import EventBus, Event, EventType
+from core.events import EventBus, Event, EventType, FunctionEventHandler
 from core.state import state_manager
 
 class SimpleToolbar(Toolbar):
@@ -13,6 +13,16 @@ class SimpleToolbar(Toolbar):
     def __init__(self):
         super().__init__()
         self._show_help = False
+        # 初始化工具栏属性
+        self._brush_size = 1
+        self._magnitude = 1.0
+        self._show_grid = True
+        self._reverse_vector = False
+        
+        # 使用全局事件总线实例
+        from core.events import event_bus
+        self._event_bus = event_bus
+        
         print("[工具栏] 使用简单工具栏（键盘快捷键和鼠标操作）")
 
     def render(self) -> None:
@@ -57,10 +67,15 @@ class SimpleToolbar(Toolbar):
         if key == 71:  # G键
             print(f"[工具栏] G键被按下，切换网格显示")
             self.toggle_grid()
+            print(f"[工具栏] toggle_grid调用完成")
         elif key == 82:  # R键
+            print(f"[工具栏] R键被按下，重置视图")
             self.reset_view()
+            print(f"[工具栏] reset_view调用完成")
         elif key == 67:  # C键
+            print(f"[工具栏] C键被按下，清空网格")
             self.clear_grid()
+            print(f"[工具栏] clear_grid调用完成")
         elif key == 84:  # T键
             self.toggle_toolbar()
         elif key == 72:  # H键
@@ -79,3 +94,53 @@ class SimpleToolbar(Toolbar):
         # 如果按下H键，显示帮助信息
         if key == 72:
             self._show_help = True
+
+    def toggle_grid(self) -> None:
+        """切换网格显示状态"""
+        self._show_grid = not self._show_grid
+        # 发送网格显示状态变化事件
+        print(f"[工具栏] 准备发布TOGGLE_GRID事件，show={self._show_grid}")
+        self._event_bus.publish(Event(EventType.TOGGLE_GRID, {"show": self._show_grid}, "SimpleToolbar"))
+        print(f"[工具栏] TOGGLE_GRID事件已发布，网格显示: {'开启' if self._show_grid else '关闭'}")
+
+    def reset_view(self) -> None:
+        """重置视图"""
+        # 发送重置视图事件
+        self._event_bus.publish(Event(EventType.RESET_VIEW, {}, "SimpleToolbar"))
+        print("[工具栏] 视图已重置")
+
+    def clear_grid(self) -> None:
+        """清空网格"""
+        # 发送清空网格事件
+        print(f"[工具栏] 准备发布CLEAR_GRID事件")
+        self._event_bus.publish(Event(EventType.CLEAR_GRID, {}, "SimpleToolbar"))
+        print("[工具栏] CLEAR_GRID事件已发布，网格已清空")
+
+    def toggle_toolbar(self) -> None:
+        """切换工具栏显示状态"""
+        # 对于简单工具栏，这个功能只是切换帮助显示
+        self._show_help = not self._show_help
+        print(f"[工具栏] 工具栏显示: {'开启' if self._show_help else '关闭'}")
+
+    def set_brush_size(self, size: int) -> None:
+        """设置画笔大小"""
+        # 确保画笔大小在合理范围内
+        self._brush_size = max(1, min(10, size))
+        # 发送画笔大小变化事件
+        self._event_bus.publish(Event(EventType.SET_BRUSH_SIZE, {"size": self._brush_size}, "SimpleToolbar"))
+        print(f"[工具栏] 画笔大小设置为: {self._brush_size}")
+
+    def set_magnitude(self, magnitude: float) -> None:
+        """设置向量大小"""
+        # 确保向量大小在合理范围内
+        self._magnitude = max(0.1, min(5.0, magnitude))
+        # 发送向量大小变化事件
+        self._event_bus.publish(Event(EventType.SET_MAGNITUDE, {"magnitude": self._magnitude}, "SimpleToolbar"))
+        print(f"[工具栏] 向量大小设置为: {self._magnitude:.1f}")
+
+    def toggle_reverse_vector(self) -> None:
+        """切换向量方向"""
+        self._reverse_vector = not self._reverse_vector
+        # 发送向量方向变化事件
+        self._event_bus.publish(Event(EventType.TOGGLE_REVERSE_VECTOR, {"reverse": self._reverse_vector}, "SimpleToolbar"))
+        print(f"[工具栏] 向量方向: {'反向' if self._reverse_vector else '正向'}")

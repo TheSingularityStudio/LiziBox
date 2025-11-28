@@ -66,7 +66,7 @@ class GridManager:
                     changed = True
 
             if changed:
-                print("[网格管理] 网格数据已更新")
+                #print("[网格管理] 网格数据已更新")
                 # 更新状态
                 self._state_manager.set("grid_updated", True)
 
@@ -84,7 +84,7 @@ class GridManager:
                 self._grid.fill(0.0)
 
                 # 更新状态
-                self._state_manager.set("grid_updated", True)
+                self._state_manager.set("grid_updated", True, notify=False)
 
                 # 发布事件
                 self._event_bus.publish(Event(

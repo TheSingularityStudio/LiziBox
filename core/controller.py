@@ -324,6 +324,25 @@ class AppController:
         # GPU计算完成事件
         if hasattr(EventType, 'GPU_COMPUTE_COMPLETED'):
             self._event_bus.subscribe(EventType.GPU_COMPUTE_COMPLETED, FunctionEventHandler(self._on_gpu_compute_completed))
+            
+        # 工具栏相关事件
+        if hasattr(EventType, 'TOGGLE_GRID'):
+            self._event_bus.subscribe(EventType.TOGGLE_GRID, FunctionEventHandler(self._on_toggle_grid))
+            
+        if hasattr(EventType, 'RESET_VIEW'):
+            self._event_bus.subscribe(EventType.RESET_VIEW, FunctionEventHandler(self._on_reset_view))
+            
+        if hasattr(EventType, 'CLEAR_GRID'):
+            self._event_bus.subscribe(EventType.CLEAR_GRID, FunctionEventHandler(self._on_clear_grid))
+            
+        if hasattr(EventType, 'SET_BRUSH_SIZE'):
+            self._event_bus.subscribe(EventType.SET_BRUSH_SIZE, FunctionEventHandler(self._on_set_brush_size))
+            
+        if hasattr(EventType, 'SET_MAGNITUDE'):
+            self._event_bus.subscribe(EventType.SET_MAGNITUDE, FunctionEventHandler(self._on_set_magnitude))
+            
+        if hasattr(EventType, 'TOGGLE_REVERSE_VECTOR'):
+            self._event_bus.subscribe(EventType.TOGGLE_REVERSE_VECTOR, FunctionEventHandler(self._on_toggle_reverse_vector))
 
     def initialize(self, title: str = "LiziEngine", width: int = 800, height: int = 600) -> bool:
         """初始化应用程序"""
@@ -514,12 +533,7 @@ class AppController:
             if self._window_manager.get_key_pressed(293):  # GLFW_KEY_F4
                 self._cmd_debug_info([])
                 
-            # G - 切换网格显示
-            if self._window_manager.get_key_pressed(71):  # GLFW_KEY_G
-                # 切换网格显示状态
-                current_show_grid = self._state_manager.get("show_grid", True)
-                self._state_manager.set("show_grid", not current_show_grid)
-                config_manager.set("show_grid", not current_show_grid)
+            # G键由事件系统处理，不再直接处理
 
     def _update_grid(self, compute_env, current_time):
         """更新网格数据"""
@@ -585,7 +599,9 @@ class AppController:
         vector_field_renderer.render_background()
 
         # 渲染网格
-        if self._state_manager.get("show_grid", True):
+        show_grid = self._state_manager.get("show_grid", True)
+        #print(f"[控制器] 渲染网格，show_grid={show_grid}")
+        if show_grid:
             vector_field_renderer.render_grid(grid, 1.0, cam_x, cam_y, cam_zoom, width, height)
 
         # 渲染向量场
@@ -765,6 +781,63 @@ class AppController:
     def _on_gpu_compute_completed(self, event: Event) -> None:
         """处理GPU计算完成事件"""
         # GPU计算已完成
+        
+    def _on_toggle_grid(self, event: Event) -> None:
+        """处理切换网格显示事件"""
+        show = event.data.get("show", True)
+        print(f"[控制器] 收到TOGGLE_GRID事件，show={show}")
+        try:
+            print(f"[控制器] 准备更新state_manager中的show_grid")
+            # 禁用通知，避免事件冲突
+            self._state_manager.set("show_grid", show, notify=False)
+            print(f"[控制器] state_manager更新完成")
+            print(f"[控制器] 跳过更新config_manager中的show_grid，避免事件冲突")
+            # 直接更新config_manager的内部状态，避免触发事件
+            try:
+                with config_manager._lock:
+                    config_manager._settings["show_grid"] = show
+                print(f"[控制器] config_manager内部状态更新完成")
+            except Exception as e:
+                print(f"[控制器] 更新config_manager内部状态时出错: {e}")
+                import traceback
+                traceback.print_exc()
+            print(f"[控制器] 更新show_grid状态为: {show}")
+        except Exception as e:
+            print(f"[控制器] 更新show_grid状态时出错: {e}")
+        
+    def _on_reset_view(self, event: Event) -> None:
+        """处理重置视图事件"""
+        grid = self._app_core.grid_manager.grid
+        if grid is not None:
+            grid_height, grid_width = grid.shape[:2]
+            self._app_core.view_manager.reset_view(grid_width, grid_height)
+            
+    def _on_clear_grid(self, event: Event) -> None:
+        """处理清空网格事件"""
+        print(f"[控制器] 收到CLEAR_GRID事件")
+        try:
+            print(f"[控制器] 准备清空网格")
+            self._app_core.grid_manager.clear_grid()
+            print(f"[控制器] 网格已清空")
+            # 更新状态，禁用通知避免事件冲突
+            self._state_manager.set("grid_updated", True, notify=False)
+        except Exception as e:
+            print(f"[控制器] 清空网格时出错: {e}")
+        
+    def _on_set_brush_size(self, event: Event) -> None:
+        """处理设置画笔大小事件"""
+        size = event.data.get("size", 1)
+        self._state_manager.set("brush_size", size)
+        
+    def _on_set_magnitude(self, event: Event) -> None:
+        """处理设置向量大小事件"""
+        magnitude = event.data.get("magnitude", 1.0)
+        self._state_manager.set("vector_magnitude", magnitude)
+        
+    def _on_toggle_reverse_vector(self, event: Event) -> None:
+        """处理切换向量方向事件"""
+        reverse = event.data.get("reverse", False)
+        self._state_manager.set("reverse_vector", reverse)
 
     def cleanup(self) -> None:
         """清理应用程序资源"""

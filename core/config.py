@@ -15,18 +15,11 @@ class ConfigManager:
     _lock = threading.Lock()  # 类级别锁，确保线程安全
 
     def __new__(cls):
-
-
-            
         if cls._instance is None:
-
-
-            
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super(ConfigManager, cls).__new__(cls)
         return cls._instance
-
 
     def __init__(self):
         if not hasattr(self, '_initialized'):
@@ -267,7 +260,7 @@ class ConfigManager:
             ))
         except Exception as e:
             print(f"[配置管理] 保存配置文件出错: {e}")
-            
+
     def _get_event_type(self, type_name: str, default_type):
         """安全地获取事件类型"""
         try:

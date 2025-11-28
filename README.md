@@ -1,5 +1,5 @@
 
-# LiziEngine 
+# LiziEngine 重构版
 
 ## 项目概述
 
@@ -127,4 +127,3 @@ toolbar = create_toolbar("auto")
 2. 使用事件系统进行模块间通信
 3. 遵循单一职责原则
 4. 保持配置和状态的一致性
-
