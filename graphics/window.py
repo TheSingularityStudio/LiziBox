@@ -1,0 +1,395 @@
+
+"""
+窗口管理模块 - 提供OpenGL窗口的创建和管理功能
+"""
+import sys
+import threading
+import time
+from typing import Optional, Dict, Any, Callable, Tuple
+import glfw
+from OpenGL.GL import *
+import numpy as np
+from core.config import config_manager
+from core.events import EventBus, Event, EventType
+from core.state import state_manager
+from .renderer import vector_field_renderer
+from core.app import app_core
+# 移除app_controller导入，通过事件系统解耦
+
+class WindowManager:
+    """窗口管理器"""
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(WindowManager, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        if not hasattr(self, '_initialized'):
+            # 使用全局事件总线实例，而不是创建新的实例
+            from core.events import event_bus
+            self._event_bus = event_bus
+            self._state_manager = state_manager
+            self._window = None
+            self._app_core = None
+            self._initialized = False
+            self._lock = threading.Lock()
+            self._initialized = True
+
+    def create_window(self, title: str = "LiziEngine", width: int = 800, height: int = 600) -> Optional[int]:
+        """创建OpenGL窗口"""
+        # 初始化GLFW
+        if not glfw.init():
+            print("[窗口管理] 初始化GLFW失败")
+            return None
+
+        # 设置窗口提示
+        glfw.window_hint(glfw.RESIZABLE, glfw.TRUE)
+        
+        # 设置OpenGL版本为3.3核心模式，提高兼容性
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        
+        # 如果是MacOS，需要设置向前兼容
+        if sys.platform == "darwin":
+            glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
+
+        # 创建窗口
+        self._window = glfw.create_window(width, height, title, None, None)
+        if not self._window:
+            print("[窗口管理] 创建窗口失败")
+            glfw.terminate()
+            return None
+
+        # 设置窗口为当前上下文
+        glfw.make_context_current(self._window)
+
+        # 设置窗口回调
+        glfw.set_window_size_callback(self._window, self._on_window_resize)
+        glfw.set_key_callback(self._window, self._on_key)
+        glfw.set_cursor_pos_callback(self._window, self._on_cursor_pos)
+        glfw.set_mouse_button_callback(self._window, self._on_mouse_button)
+        glfw.set_scroll_callback(self._window, self._on_scroll)
+
+        # 设置窗口用户指针，用于在回调中访问WindowManager实例
+        glfw.set_window_user_pointer(self._window, self)
+
+        # 初始化渲染器
+        vector_field_renderer.initialize()
+
+        # 更新状态
+        self._state_manager.update({
+            "window_title": title,
+            "window_width": width,
+            "window_height": height
+        })
+
+        print(f"[窗口管理] 窗口创建成功: {width}x{height}")
+
+        # 发布窗口创建事件
+        self._event_bus.publish(Event(
+            EventType.WINDOW_CREATED if hasattr(EventType, 'WINDOW_CREATED') else EventType.VIEW_CHANGED,
+            {"title": title, "width": width, "height": height},
+            "WindowManager"
+        ))
+
+        return self._window
+
+    def _on_window_resize(self, window: int, width: int, height: int) -> None:
+        """窗口大小改变回调"""
+        if height == 0:
+            height = 1
+
+        glViewport(0, 0, width, height)
+
+        # 更新状态
+        self._state_manager.update({
+            "window_width": width,
+            "window_height": height,
+            "view_changed": True
+        })
+
+        # 发布窗口大小改变事件
+        self._event_bus.publish(Event(
+            EventType.WINDOW_RESIZED if hasattr(EventType, 'WINDOW_RESIZED') else EventType.VIEW_CHANGED,
+            {"width": width, "height": height},
+            "WindowManager"
+        ))
+
+    def _on_key(self, window: int, key: int, scancode: int, action: int, mods: int) -> None:
+        """键盘按键回调"""
+        # 发布键盘事件
+        self._event_bus.publish(Event(
+            EventType.KEY_PRESSED,
+            {"key": key, "scancode": scancode, "action": action, "mods": mods},
+            "WindowManager"
+        ))
+
+        # ESC键退出
+        if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
+            glfw.set_window_should_close(window, True)
+
+    def _on_cursor_pos(self, window: int, xpos: float, ypos: float) -> None:
+        """鼠标位置回调"""
+        # 获取窗口尺寸
+        width, height = glfw.get_window_size(window)
+
+        # 获取相机参数
+        cam_x = self._state_manager.get("cam_x", 0.0)
+        cam_y = self._state_manager.get("cam_y", 0.0)
+        cam_zoom = self._state_manager.get("cam_zoom", 1.0)
+
+        # 计算世界坐标
+        half_w = (width / 2.0) / cam_zoom
+        half_h = (height / 2.0) / cam_zoom
+
+        world_x = cam_x - half_w + (xpos / width) * (2 * half_w)
+        world_y = cam_y - half_h + (ypos / height) * (2 * half_h)
+
+        # 获取网格单元大小
+        cell_size = config_manager.get("cell_size", 1.0)
+
+        # 计算网格坐标
+        grid_x = int(world_x / cell_size)
+        grid_y = int(world_y / cell_size)
+
+        # 更新状态
+        self._state_manager.update({
+            "mouse_x": xpos,
+            "mouse_y": ypos,
+            "world_x": world_x,
+            "world_y": world_y,
+            "grid_x": grid_x,
+            "grid_y": grid_y
+        })
+
+        # 获取当前网格数据
+        grid = app_core.grid_manager.grid
+        if grid is not None:
+            # 确保在网格范围内
+            if 0 <= grid_y < grid.shape[0] and 0 <= grid_x < grid.shape[1]:
+                # 获取当前位置的向量
+                vector = grid[grid_y, grid_x]
+                self._state_manager.update({
+                    "display_vec_x": float(vector[0]),
+                    "display_vec_y": float(vector[1])
+                })
+            else:
+                # 如果不在网格范围内，重置为0
+                self._state_manager.update({
+                    "display_vec_x": 0.0,
+                    "display_vec_y": 0.0
+                })
+        else:
+            # 如果没有网格数据，重置为0
+            self._state_manager.update({
+                "display_vec_x": 0.0,
+                "display_vec_y": 0.0
+            })
+
+        # 发布鼠标移动事件
+        self._event_bus.publish(Event(
+            EventType.MOUSE_MOVED if hasattr(EventType, 'MOUSE_MOVED') else EventType.VIEW_CHANGED,
+            {"x": xpos, "y": ypos, "grid_x": grid_x, "grid_y": grid_y},
+            "WindowManager"
+        ))
+
+    def _on_mouse_button(self, window: int, button: int, action: int, mods: int) -> None:
+        """鼠标按键回调"""
+        # 获取鼠标位置
+        xpos, ypos = glfw.get_cursor_pos(window)
+
+        # 获取网格坐标
+        grid_x = self._state_manager.get("grid_x", 0)
+        grid_y = self._state_manager.get("grid_y", 0)
+
+        # 获取网格数据
+        grid = app_core.grid_manager.grid
+        if grid is not None and button == 0 and action == 1:  # 左键按下
+            # 获取当前向量大小
+            magnitude = config_manager.get("default_magnitude", 1.0)
+
+            # 获取画笔大小
+            brush_size = config_manager.get("default_brush_size", 1)
+
+            # 获取是否反转向量
+            reverse_vector = config_manager.get("reverse_vector", False)
+
+            # 应用画笔效果
+            updates = {}
+            for dy_offset in range(-brush_size + 1, brush_size):
+                for dx_offset in range(-brush_size + 1, brush_size):
+                    # 计算距离中心的距离
+                    dist = np.sqrt(dx_offset**2 + dy_offset**2)
+                    if dist < brush_size:
+                        # 计算实际影响的网格位置
+                        target_y = grid_y + dy_offset
+                        target_x = grid_x + dx_offset
+
+                        # 确保在网格范围内
+                        if 0 <= target_y < grid.shape[0] and 0 <= target_x < grid.shape[1]:
+                            # 获取当前位置的现有向量
+                            current_vx = float(grid[target_y, target_x, 0])
+                            current_vy = float(grid[target_y, target_x, 1])
+
+                            # 根据距离调整向量大小的影响
+                            influence = 1.0 - (dist / brush_size)
+
+                            # 计算新向量 - 基于现有向量调整大小
+                            if reverse_vector:
+                                # 如果需要反转，则反转现有向量并调整大小
+                                new_vx = -current_vx * influence * magnitude
+                                new_vy = -current_vy * influence * magnitude
+                            else:
+                                # 否则，保持方向，只调整大小
+                                current_length = np.sqrt(current_vx**2 + current_vy**2)
+                                if current_length > 0:
+                                    # 保持方向，调整大小
+                                    new_vx = (current_vx / current_length) * influence * magnitude
+                                    new_vy = (current_vy / current_length) * influence * magnitude
+                                else:
+                                    # 如果是零向量，则创建一个默认向量
+                                    new_vx = influence * magnitude
+                                    new_vy = 0
+
+                            updates[(target_y, target_x)] = (new_vx, new_vy)
+
+            # 使用统一接口更新网格
+            if updates:
+                # 通过事件系统发布网格更新请求，而不是直接调用app_controller
+                # 这样可以避免循环导入问题
+                if not hasattr(EventType, 'GRID_UPDATE_REQUEST'):
+                    print("[窗口管理] 错误: GRID_UPDATE_REQUEST 事件类型不存在，无法更新网格")
+                    return
+                
+                print("[窗口管理] 发布网格更新请求")
+
+                self._event_bus.publish(Event(
+                    EventType.GRID_UPDATE_REQUEST,
+                    {"updates": updates},
+                    "WindowManager"
+                ))
+                
+        # 发布鼠标按键事件
+        self._event_bus.publish(Event(
+            EventType.MOUSE_CLICKED,
+            {"button": button, "action": action, "mods": mods, "x": xpos, "y": ypos, "grid_x": grid_x, "grid_y": grid_y},
+            "WindowManager"
+        ))
+
+    def _on_scroll(self, window: int, xoffset: float, yoffset: float) -> None:
+        """鼠标滚轮回调"""
+        # 获取当前缩放级别
+        cam_zoom = self._state_manager.get("cam_zoom", 1.0)
+
+        # 根据滚轮方向调整缩放级别
+        zoom_factor = 1.1
+        if yoffset > 0:
+            cam_zoom *= zoom_factor
+        else:
+            cam_zoom /= zoom_factor
+
+        # 限制缩放范围
+        cam_zoom = max(0.1, min(10.0, cam_zoom))
+
+        # 更新状态
+        self._state_manager.update({
+            "cam_zoom": cam_zoom,
+            "view_changed": True
+        })
+
+        # 发布缩放事件
+        self._event_bus.publish(Event(
+            EventType.ZOOM_CHANGED if hasattr(EventType, 'ZOOM_CHANGED') else EventType.VIEW_CHANGED,
+            {"zoom": cam_zoom},
+            "WindowManager"
+        ))
+
+    def get_window(self) -> Optional[int]:
+        """获取窗口句柄"""
+        return self._window
+
+    def should_close(self) -> bool:
+        """检查窗口是否应该关闭"""
+        if self._window is None:
+            return True
+        return glfw.window_should_close(self._window)
+
+    def swap_buffers(self) -> None:
+        """交换前后缓冲区"""
+        if self._window is not None:
+            glfw.swap_buffers(self._window)
+
+    def poll_events(self) -> None:
+        """处理事件"""
+        glfw.poll_events()
+
+    def get_window_size(self) -> Tuple[int, int]:
+        """获取窗口大小"""
+        if self._window is None:
+            return (800, 600)
+        return glfw.get_window_size(self._window)
+        
+    def get_key_pressed(self, key: int) -> bool:
+        """检查指定按键是否被按下"""
+        if self._window is None:
+            return False
+        return glfw.get_key(self._window, key) == glfw.PRESS
+
+    def get_framebuffer_size(self) -> Tuple[int, int]:
+        """获取帧缓冲区大小"""
+        if self._window is None:
+            return (800, 600)
+        return glfw.get_framebuffer_size(self._window)
+
+    def set_window_title(self, title: str) -> None:
+        """设置窗口标题"""
+        if self._window is not None:
+            glfw.set_window_title(self._window, title)
+
+            # 更新状态
+            self._state_manager.set("window_title", title)
+
+    def cleanup(self) -> None:
+        """清理窗口资源"""
+        if self._window is not None:
+            # 清理渲染器
+            vector_field_renderer.cleanup()
+
+            # 销毁窗口
+            glfw.destroy_window(self._window)
+            self._window = None
+
+            # 终止GLFW
+            glfw.terminate()
+
+            print("[窗口管理] 窗口资源清理完成")
+
+            # 发布窗口关闭事件
+            self._event_bus.publish(Event(
+                EventType.WINDOW_CLOSED if hasattr(EventType, 'WINDOW_CLOSED') else EventType.VIEW_CHANGED,
+                {},
+                "WindowManager"
+            ))
+
+# 全局窗口管理器实例
+window_manager = WindowManager()
+
+# 便捷函数
+def create_window(title: str = "LiziEngine", width: int = 800, height: int = 600) -> Optional[int]:
+    """便捷函数：创建窗口"""
+    return window_manager.create_window(title, width, height)
+
+def should_close() -> bool:
+    """便捷函数：检查窗口是否应该关闭"""
+    return window_manager.should_close()
+
+def swap_buffers() -> None:
+    """便捷函数：交换前后缓冲区"""
+    window_manager.swap_buffers()
+
+def poll_events() -> None:
+    """便捷函数：处理事件"""
+    window_manager.poll_events()
