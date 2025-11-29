@@ -56,9 +56,7 @@ class ConfigManager:
                 "include_self": True,
                 "enable_vector_average": True,
                 "reverse_vector": False,
-                "enable_vector_normalization": False,
-                "enable_vector_smoothing": False,
-                "vector_smooth_factor": 0.8
+                "enable_vector_normalization": False
             },
 
             # 渲染设置
@@ -363,8 +361,6 @@ class ConfigManager:
             "enable_vector_average": ("vector_field", "enable_vector_average"),
             "reverse_vector": ("vector_field", "reverse_vector"),
             "enable_vector_normalization": ("vector_field", "enable_vector_normalization"),
-            "enable_vector_smoothing": ("vector_field", "enable_vector_smoothing"),
-            "vector_smooth_factor": ("vector_field", "vector_smooth_factor"),
             "vector_color": ("vector_field", "vector_color"),
 
             # 渲染设置

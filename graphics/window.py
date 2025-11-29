@@ -444,6 +444,19 @@ class WindowManager:
                 
                 #print("[窗口管理] 发布网格更新请求")
 
+                # 记录向量场中心点位置（支持多个中心点）
+                centers = self._state_manager.get("vector_field_centers", [])
+                # 检查是否已存在相近的中心点，避免重复添加
+                exists = False
+                for center in centers:
+                    if len(center) >= 2 and abs(center[0] - grid_x) < 5 and abs(center[1] - grid_y) < 5:
+                        exists = True
+                        break
+
+                if not exists:
+                    centers.append([grid_x, grid_y])
+                    self._state_manager.set("vector_field_centers", centers)
+
                 self._event_bus.publish(Event(
                     EventType.GRID_UPDATE_REQUEST,
                     {"updates": updates},

@@ -17,327 +17,267 @@ class VectorFieldCalculator:
         读取目标 (x,y) 的上下左右四个相邻格子的向量并相加（越界安全）。
         返回 (sum_x, sum_y) 的 tuple。
         """
-        # 从配置管理器读取权重参数和平均值开关
-        self_weight = config_manager.get("vector_field.vector_self_weight", 1.0)
-        neighbor_weight = config_manager.get("vector_field.vector_neighbor_weight", 0.1)
-        enable_average = config_manager.get("vector_field.enable_vector_average", False)
-
-        # 如果未指定include_self，则使用配置管理器中的默认值
         if include_self is None:
             include_self = config_manager.get("vector_field.include_self", True)
 
-        if grid is None:
-            return (0.0, 0.0)
-
-        if not isinstance(grid, np.ndarray):
-            raise TypeError("grid 必须是 numpy.ndarray 类型")
-
         h, w = grid.shape[:2]
-        sum_x = 0.0
-        sum_y = 0.0
+        sum_x = sum_y = 0.0
+
+        # 上
+        if y > 0:
+            sum_x += float(grid[y-1, x, 0])
+            sum_y += float(grid[y-1, x, 1])
+        # 下
+        if y < h - 1:
+            sum_x += float(grid[y+1, x, 0])
+            sum_y += float(grid[y+1, x, 1])
+        # 左
+        if x > 0:
+            sum_x += float(grid[y, x-1, 0])
+            sum_y += float(grid[y, x-1, 1])
+        # 右
+        if x < w - 1:
+            sum_x += float(grid[y, x+1, 0])
+            sum_y += float(grid[y, x+1, 1])
+
+        # 中心点自身
+        if include_self:
+            sum_x += float(grid[y, x, 0])
+            sum_y += float(grid[y, x, 1])
+
+        return sum_x, sum_y
+
+    def average_adjacent_vectors(self, grid: np.ndarray, x: int, y: int, include_self: bool = None) -> Tuple[float, float]:
+        """
+        读取目标 (x,y) 的上下左右四个相邻格子的向量并求平均（越界安全）。
+        返回 (avg_x, avg_y) 的 tuple。
+        """
+        sum_x, sum_y = self.sum_adjacent_vectors(grid, x, y, include_self)
+
+        # 计算相邻格子数量
+        h, w = grid.shape[:2]
         count = 0
 
-        if include_self and 0 <= x < w and 0 <= y < h:
-            vx, vy = float(grid[y, x, 0]), float(grid[y, x, 1])
-            sum_x += vx * self_weight  # 使用配置管理器中的自身权重
-            sum_y += vy * self_weight
+        # 上
+        if y > 0:
+            count += 1
+        # 下
+        if y < h - 1:
+            count += 1
+        # 左
+        if x > 0:
+            count += 1
+        # 右
+        if x < w - 1:
             count += 1
 
-        neighbors = ((0, -1), (0, 1), (-1, 0), (1, 0))
-        for dx, dy in neighbors:
-            nx = x + dx
-            ny = y + dy
-            if 0 <= nx < w and 0 <= ny < h:
-                vx, vy = float(grid[ny, nx, 0]), float(grid[ny, nx, 1])
-                sum_x += vx * neighbor_weight  # 使用配置管理器中的邻居权重
-                sum_y += vy * neighbor_weight
-                count += 1
-
-        # 如果启用平均值功能，则除以有效向量数量
-        if enable_average and count > 0:
-            sum_x /= count
-            sum_y /= count
-
-        return (sum_x, sum_y)
-
-    def update_grid_with_adjacent_sum(self, grid: np.ndarray, include_self: bool = None) -> np.ndarray:
-        """
-        使用NumPy的向量化操作高效计算相邻向量之和，替换原有的双重循环实现。
-        返回修改后的 grid。
-        """
-        # 如果未指定include_self，则使用配置管理器中的默认值
+        # 中心点自身
         if include_self is None:
             include_self = config_manager.get("vector_field.include_self", True)
-
-        if grid is None or not isinstance(grid, np.ndarray):
-            return grid
-
-        h, w = grid.shape[:2]
-
-        # 获取邻居权重
-        neighbor_weight = config_manager.get("vector_field.vector_neighbor_weight", 0.1)
-        self_weight = config_manager.get("vector_field.vector_self_weight", 1.0)
-        enable_average = config_manager.get("vector_field.enable_vector_average", False)
-        enable_normalization = config_manager.get("vector_field.enable_vector_normalization", False)
-
-        # 预分配结果数组以提高性能
-        result = np.zeros_like(grid)
-
-        # 使用向量化操作计算邻居向量之和
-        # 创建填充数组来处理边界条件
-        padded_grid = np.pad(grid, ((1, 1), (1, 1), (0, 0)), mode='constant')
-
-        # 计算四个方向的邻居贡献
-        # 上邻居 (y+1, x)
-        up_neighbors = padded_grid[2:, 1:-1] * neighbor_weight
-        # 下邻居 (y, x)
-        down_neighbors = padded_grid[:-2, 1:-1] * neighbor_weight
-        # 左邻居 (y, x+1)
-        left_neighbors = padded_grid[1:-1, 2:] * neighbor_weight
-        # 右邻居 (y, x)
-        right_neighbors = padded_grid[1:-1, :-2] * neighbor_weight
-
-        # 求和邻居贡献
-        result = up_neighbors + down_neighbors + left_neighbors + right_neighbors
-
-        # 如果包含自身，添加自身贡献
         if include_self:
-            result += grid * self_weight
+            count += 1
 
-        # 如果需要平均值，计算有效邻居数量并归一化
-        if enable_average:
-            # 创建有效邻居计数矩阵
-            neighbor_count = np.ones((h, w), dtype=np.float32) * 4  # 默认4个邻居
+        if count > 0:
+            return sum_x / count, sum_y / count
+        else:
+            return 0.0, 0.0
 
-            # 边界处理
-            neighbor_count[0, :] -= 1   # 上边界
-            neighbor_count[-1, :] -= 1  # 下边界
-            neighbor_count[:, 0] -= 1   # 左边界
-            neighbor_count[:, -1] -= 1  # 右边界
-
-            # 如果包含自身，邻居数加1
-            if include_self:
-                neighbor_count += 1
-
-            # 归一化
-            #result = result / neighbor_count[:, :, np.newaxis]
-
-        # 如果需要权重归一化
-        elif enable_normalization:
-            # 计算每个点的有效权重总和
-            weight_sum = np.ones((h, w), dtype=np.float32) * 4 * neighbor_weight  # 默认4个邻居
-
-            # 边界处理
-            weight_sum[0, :] -= neighbor_weight   # 上边界
-            weight_sum[-1, :] -= neighbor_weight  # 下边界
-            weight_sum[:, 0] -= neighbor_weight   # 左边界
-            weight_sum[:, -1] -= neighbor_weight  # 右边界
-
-            # 如果包含自身，添加自身权重
-            if include_self:
-                weight_sum += self_weight
-
-            # 确保权重总和大于0，避免除以0
-            weight_sum = np.maximum(weight_sum, 0.1)
-
-            # 归一化
-            result = result / weight_sum[:, :, np.newaxis]
-
-        # 将结果复制回原网格
-        grid[:] = result
-        return grid
-
-    def create_vector_grid(self, width: int = 640, height: int = 480, default: Tuple[float, float] = (0, 0)) -> np.ndarray:
-        """创建一个 height x width 的二维向量网格"""
-        grid = np.zeros((height, width, 2), dtype=np.float32)
-        if default != (0, 0):
-            grid[:, :, 0] = default[0]
-            grid[:, :, 1] = default[1]
-        return grid
-
-    def create_radial_pattern(self, grid: np.ndarray, center: Tuple[float, float] = None,
-                            radius: float = None, magnitude: float = 1.0) -> np.ndarray:
-        """在网格上创建径向向量模式"""
-        if grid is None or not isinstance(grid, np.ndarray):
-            raise TypeError("grid 必须是 numpy.ndarray 类型")
-
-        h, w = grid.shape[:2]
-
-        # 如果未指定中心，则使用网格中心
-        if center is None:
-            center = (w // 2, h // 2)
-
-        # 如果未指定半径，则使用网格尺寸的1/4
-        if radius is None:
-            radius = min(w, h) // 4
-
-        cx, cy = center
-
-        # 创建坐标网格
-        y_coords, x_coords = np.mgrid[0:h, 0:w]
-
-        # 计算每个点到中心的距离和方向
-        dx = x_coords - cx
-        dy = y_coords - cy
-        dist = np.sqrt(dx**2 + dy**2)
-
-        # 创建掩码：只处理在半径内且不在中心的点
-        mask = (dist < radius) & (dist > 0)
-
-        # 计算径向角度
-        angle = np.arctan2(dy, dx)
-
-        # 计算向量大小（从中心向外递减）
-        vec_magnitude = magnitude * (1.0 - (dist / radius))
-
-        # 计算向量分量
-        vx = vec_magnitude * np.cos(angle)
-        vy = vec_magnitude * np.sin(angle)
-
-        # 应用到网格
-        grid[mask, 0] = vx[mask]
-        grid[mask, 1] = vy[mask]
-
-        return grid
-
-    def create_tangential_pattern(self, grid: np.ndarray, center: Tuple[float, float] = None,
-                               radius: float = None, magnitude: float = 1.0) -> np.ndarray:
-        """在网格上创建切线向量模式（旋转）"""
-        if grid is None or not isinstance(grid, np.ndarray):
-            raise TypeError("grid 必须是 numpy.ndarray 类型")
-
-        h, w = grid.shape[:2]
-
-        # 如果未指定中心，则使用网格中心
-        if center is None:
-            center = (w // 2, h // 2)
-
-        # 如果未指定半径，则使用网格尺寸的1/4
-        if radius is None:
-            radius = min(w, h) // 4
-
-        cx, cy = center
-
-        # 创建坐标网格
-        y_coords, x_coords = np.mgrid[0:h, 0:w]
-
-        # 计算每个点到中心的距离和方向
-        dx = x_coords - cx
-        dy = y_coords - cy
-        dist = np.sqrt(dx**2 + dy**2)
-
-        # 创建掩码：只处理在半径内且不在中心的点
-        mask = (dist < radius) & (dist > 0)
-
-        # 计算切线角度（径向角度+90度）
-        angle = np.arctan2(dy, dx) + np.pi/2
-
-        # 计算向量大小（从中心向外递减）
-        vec_magnitude = magnitude * (1.0 - (dist / radius))
-
-        # 计算向量分量
-        vx = vec_magnitude * np.cos(angle)
-        vy = vec_magnitude * np.sin(angle)
-
-        # 应用到网格
-        grid[mask, 0] = vx[mask]
-        grid[mask, 1] = vy[mask]
-
-        return grid
-
-    def find_vector_centers(self, grid: np.ndarray, threshold: float = 0.5, min_distance: int = 10) -> List[Tuple[int, int]]:
+    def apply_vector_field(self, grid: np.ndarray, x: int, y: int, magnitude: float = None, brush_size: int = None) -> None:
         """
-        识别向量场的中心点（向量汇聚或发散的地方）
+        在指定位置应用向量场
+        """
+        if magnitude is None:
+            magnitude = config_manager.get("vector_field.default_vector_length", 1.0)
+        if brush_size is None:
+            brush_size = config_manager.get("vector_field.default_brush_size", 20)
+
+        h, w = grid.shape[:2]
+        reverse = config_manager.get("vector_field.reverse_vector", False)
+
+        # 确保在网格范围内
+        x = max(0, min(w - 1, x))
+        y = max(0, min(h - 1, y))
+
+        # 计算向量方向和强度
+        avg_x, avg_y = self.average_adjacent_vectors(grid, x, y)
+        avg_magnitude = np.sqrt(avg_x**2 + avg_y**2)
+
+        if avg_magnitude > 0:
+            # 归一化平均向量
+            norm_x = avg_x / avg_magnitude
+            norm_y = avg_y / avg_magnitude
+
+            # 根据配置决定是否反转向量
+            if reverse:
+                norm_x = -norm_x
+                norm_y = -norm_y
+
+            # 应用向量场
+            for dy in range(-brush_size, brush_size + 1):
+                for dx in range(-brush_size, brush_size + 1):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h:
+                        # 计算距离权重
+                        dist = np.sqrt(dx**2 + dy**2)
+                        if dist <= brush_size:
+                            weight = 1.0 - (dist / brush_size)
+                            grid[ny, nx, 0] = float(grid[ny, nx, 0]) * (1 - weight) + norm_x * magnitude * weight
+                            grid[ny, nx, 1] = float(grid[ny, nx, 1]) * (1 - weight) + norm_y * magnitude * weight
+
+    def create_tangential_pattern(self, grid: np.ndarray, magnitude: float = 0.2, radius_ratio: float = 0.3) -> None:
+        """
+        在网格上创建切线向量模式（围绕中心点的旋转模式）
         
         参数:
             grid: 向量网格
-            threshold: 识别中心的阈值，值越大识别越严格
-            min_distance: 中心点之间的最小距离，避免重复识别
+            magnitude: 向量强度（默认值减小为0.2）
+            radius_ratio: 切线模式的半径比例，相对于网格最小边长的比例（默认0.3）
+        """
+        if grid is None or not isinstance(grid, np.ndarray):
+            return
             
+        h, w = grid.shape[:2]
+        center_x, center_y = w // 2, h // 2
+        
+        # 计算切线模式的实际半径
+        min_dimension = min(h, w)
+        pattern_radius = min_dimension * radius_ratio
+        
+        for y in range(h):
+            for x in range(w):
+                # 计算从中心到当前点的向量
+                dx = x - center_x
+                dy = y - center_y
+                dist = np.sqrt(dx**2 + dy**2)
+                
+                # 只在指定半径内创建切线向量
+                if 0 < dist <= pattern_radius:
+                    # 计算切线方向（垂直于径向）
+                    # 切线方向可以通过交换x和y并取反一个分量得到
+                    
+                    # 根据距离调整向量强度，距离中心越远，向量越小
+                    distance_factor = 1.0 - (dist / pattern_radius) * 0.5  # 距离中心最远处的向量强度为50%
+                    adjusted_magnitude = magnitude * distance_factor
+                    
+                    tangent_x = -dy / dist * adjusted_magnitude
+                    tangent_y = dx / dist * adjusted_magnitude
+                    
+                    # 设置向量
+                    grid[y, x, 0] = tangent_x
+                    grid[y, x, 1] = tangent_y
+                else:
+                    # 中心点和半径外的点没有切线方向，设为0
+                    grid[y, x, 0] = 0
+                    grid[y, x, 1] = 0
+
+    def correct_vector_centers(self, grid: np.ndarray, threshold: float = 0.5, min_distance: int = 10) -> List[Tuple[int, int]]:
+        """
+        获取已记录的向量场中心点，并在每帧不断修正其位置
+
+        参数:
+            grid: 向量网格
+            threshold: 用于判断是否更新中心点的向量强度阈值
+            min_distance: 中心点之间的最小距离，避免重复识别
+
         返回:
-            中心点坐标列表 [(x1, y1), (x2, y2), ...]
+            修正后的中心点坐标列表 [(x, y), ...] - 支持多个中心点
         """
         if grid is None or not isinstance(grid, np.ndarray):
             return []
-            
-        h, w = grid.shape[:2]
-        centers = []
-        
-        # 获取向量分量
-        vx = grid[:, :, 0]
-        vy = grid[:, :, 1]
-        
-        # 计算向量大小
-        magnitude = np.sqrt(vx**2 + vy**2)
-        
-        # 计算向量散度，用于识别汇聚/发散点
-        # 使用中心差分法计算散度
-        div = np.zeros((h, w), dtype=np.float32)
-        
-        # 内部点
-        div[1:-1, 1:-1] = (vx[1:-1, 2:] - vx[1:-1, :-2]) / 2.0 + (vy[2:, 1:-1] - vy[:-2, 1:-1]) / 2.0
-        
-        # 边界点使用前向/后向差分
-        div[0, 1:-1] = (vx[0, 2:] - vx[0, :-2]) / 2.0 + (vy[1, 1:-1] - vy[0, 1:-1])
-        div[-1, 1:-1] = (vx[-1, 2:] - vx[-1, :-2]) / 2.0 + (vy[-1, 1:-1] - vy[-2, 1:-1])
-        div[1:-1, 0] = (vx[1:-1, 1] - vx[1:-1, 0]) + (vy[2:, 0] - vy[:-2, 0]) / 2.0
-        div[1:-1, -1] = (vx[1:-1, -1] - vx[1:-1, -2]) + (vy[2:, -1] - vy[:-2, -1]) / 2.0
-        
-        # 识别极值点（散度最大和最小的点）
-        max_div = np.max(div)
-        min_div = np.min(div)
-        
-        # 根据阈值识别中心点
-        if max_div > threshold:
-            # 发散点（散度为正）
-            max_points = np.where(div > max_div * threshold)
-            for y, x in zip(max_points[0], max_points[1]):
-                # 确保向量大小足够大
-                if magnitude[y, x] > 0.1:
-                    # 检查与已有中心的距离
-                    is_far_enough = True
-                    for cx, cy in centers:
-                        if np.sqrt((x - cx)**2 + (y - cy)**2) < min_distance:
-                            is_far_enough = False
-                            break
-                    
-                    if is_far_enough:
-                        centers.append((x, y))
-        
-        if min_div < -threshold:
-            # 汇聚点（散度为负）
-            min_points = np.where(div < min_div * threshold)
-            for y, x in zip(min_points[0], min_points[1]):
-                # 确保向量大小足够大
-                if magnitude[y, x] > 0.1:
-                    # 检查与已有中心的距离
-                    is_far_enough = True
-                    for cx, cy in centers:
-                        if np.sqrt((x - cx)**2 + (y - cy)**2) < min_distance:
-                            is_far_enough = False
-                            break
-                    
-                    if is_far_enough:
-                        centers.append((x, y))
-        
-        return centers
 
-# 全局向量场计算器实例
+        # 获取已记录的向量场中心点列表
+        centers = state_manager.get("vector_field_centers", [])
+
+        # 如果没有记录的中心点，返回空列表
+        if not centers:
+            return []
+
+        # 确保在网格范围内
+        h, w = grid.shape[:2]
+        valid_centers = []
+        updated_centers = []
+
+        # 获取自动修正开关
+        auto_correct = config_manager.get("vector_field.auto_correct_centers", True)
+
+        for center in centers:
+            if len(center) >= 2:  # 确保中心点有x,y坐标
+                center_x, center_y = center[0], center[1]
+
+                # 确保在网格范围内
+                if 0 <= center_x < w and 0 <= center_y < h:
+                    # 如果启用自动修正，则根据向量场调整中心点位置
+                    if auto_correct:
+                        # 获取搜索范围（基于配置）
+                        search_radius = config_manager.get("vector_field.center_search_radius", 10)
+
+                        # 确保搜索范围不超出网格边界
+                        min_x = max(0, center_x - search_radius)
+                        max_x = min(w - 1, center_x + search_radius)
+                        min_y = max(0, center_y - search_radius)
+                        max_y = min(h - 1, center_y + search_radius)
+
+                        # 使用加权平均方法计算新的中心点位置
+                        total_weight = 0.0
+                        weighted_x = 0.0
+                        weighted_y = 0.0
+
+                        # 设置最大向量强度阈值，防止过大值影响修正
+                        max_magnitude = 5.0
+
+                        for y in range(min_y, max_y + 1):
+                            for x in range(min_x, max_x + 1):
+                                # 计算到原始中心的距离
+                                dist = np.sqrt((x - center_x)**2 + (y - center_y)**2)
+
+                                # 计算当前位置的向量
+                                vec_x = float(grid[y, x, 0])
+                                vec_y = float(grid[y, x, 1])
+                                magnitude = np.sqrt(vec_x**2 + vec_y**2)
+
+                                # 对向量强度进行限制，防止过大值影响修正
+                                magnitude = min(magnitude, max_magnitude)
+
+                                # 计算权重：向量强度越高，距离原始中心越近，权重越大
+                                # 使用高斯函数计算距离权重，使中心附近的点权重更大
+                                distance_weight = np.exp(-(dist**2) / (2 * (search_radius/2)**2))
+                                weight = magnitude * distance_weight
+
+                                # 累加权重和加权位置
+                                total_weight += weight
+                                weighted_x += x * weight
+                                weighted_y += y * weight
+
+                        # 计算加权平均位置
+                        if total_weight > 0:
+                            best_x = int(round(weighted_x / total_weight))
+                            best_y = int(round(weighted_y / total_weight))
+
+                            # 确保结果在搜索范围内
+                            best_x = max(min_x, min(max_x, best_x))
+                            best_y = max(min_y, min(max_y, best_y))
+
+                            # 计算位置变化
+                            position_change = np.sqrt((best_x - center_x)**2 + (best_y - center_y)**2)
+
+                            # 如果位置变化足够大，则更新中心点
+                            if (best_x != center_x or best_y != center_y) and position_change > 0.5:
+                                # 更新中心点位置
+                                center_x, center_y = best_x, best_y
+                                updated_centers.append([center_x, center_y])
+
+                    # 添加到有效中心点列表
+                    valid_centers.append((center_x, center_y))
+
+        # 如果有中心点位置被更新，则保存更新后的位置
+        if updated_centers:
+            state_manager.set("vector_field_centers", valid_centers)
+
+        return valid_centers
+
+# 创建全局向量场计算器实例
 vector_calculator = VectorFieldCalculator()
 
-# 便捷函数
-def sum_adjacent_vectors(grid: np.ndarray, x: int, y: int, include_self: bool = None) -> Tuple[float, float]:
-    """便捷函数：计算相邻向量之和"""
-    return vector_calculator.sum_adjacent_vectors(grid, x, y, include_self)
-
-def update_grid_with_adjacent_sum(grid: np.ndarray, include_self: bool = None) -> np.ndarray:
-    """便捷函数：更新整个网格"""
-    return vector_calculator.update_grid_with_adjacent_sum(grid, include_self)
-
-def create_vector_grid(width: int = 640, height: int = 480, default: Tuple[float, float] = (0, 0)) -> np.ndarray:
-    """便捷函数：创建向量网格"""
-    return vector_calculator.create_vector_grid(width, height, default)
-
-def find_vector_centers(grid: np.ndarray, threshold: float = 0.5, min_distance: int = 10) -> List[Tuple[int, int]]:
-    """便捷函数：识别向量中心点"""
-    return vector_calculator.find_vector_centers(grid, threshold, min_distance)
+def correct_vector_centers(grid: np.ndarray, threshold: float = 0.5, min_distance: int = 10) -> List[Tuple[int, int]]:
+    """便捷函数：修正向量中心点位置"""
+    return vector_calculator.correct_vector_centers(grid, threshold, min_distance)

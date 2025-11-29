@@ -463,8 +463,8 @@ class AppController:
             min_distance = _config.get("vector_field.center_min_distance", 10)
             
             # 识别向量中心
-            from compute.vector_field import find_vector_centers
-            centers = find_vector_centers(grid, threshold, min_distance)
+            from compute.vector_field import correct_vector_centers
+            centers = correct_vector_centers(grid, threshold, min_distance)
             
             # 渲染中心标记
             if centers:
@@ -760,6 +760,9 @@ class AppController:
                     self._app_core.grid_manager._grid.fill(0.0)
                     # 更新状态，不触发事件
                     self._state_manager.set("grid_updated", True, notify=False)
+
+                    # 清除中心点标记
+                    self._state_manager.set("vector_field_centers", [])
 
                     # 如果使用OpenCL计算，同步更新GPU缓冲区
                     if _config.get("compute.use_opencl_compute", False):
