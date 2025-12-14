@@ -318,17 +318,6 @@ class Window(EventHandler):
         viewport_width = self._state_manager.get("viewport_width", self._width)
         viewport_height = self._state_manager.get("viewport_height", self._height)
 
-        # 渲染网格
-        self._renderer.render_grid(
-            grid, 
-            cell_size=self._config_manager.get("cell_size", 1.0),
-            cam_x=cam_x, 
-            cam_y=cam_y, 
-            cam_zoom=cam_zoom,
-            viewport_width=viewport_width,
-            viewport_height=viewport_height
-        )
-
         # 渲染向量场
         self._renderer.render_vector_field(
             grid,
@@ -353,6 +342,19 @@ class Window(EventHandler):
         except Exception:
             # 渲染标记不是关键路径，忽略错误以保证主渲染继续
             pass
+        
+        # 渲染网格
+        self._renderer.render_grid(
+            grid, 
+            cell_size=self._config_manager.get("cell_size", 1.0),
+            cam_x=cam_x, 
+            cam_y=cam_y, 
+            cam_zoom=cam_zoom,
+            viewport_width=viewport_width,
+            viewport_height=viewport_height
+        )
+
+
 
         # 交换缓冲区
         glfw.swap_buffers(self._window)

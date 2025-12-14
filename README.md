@@ -42,7 +42,7 @@
 ## 项目结构
 
 ```
-LiziEngine-Reborn/
+LiziEngine/
 ├── docs/              # 文档目录
 ├── lizi_engine/       # 主代码目录
 │   ├── core/          # 核心模块
