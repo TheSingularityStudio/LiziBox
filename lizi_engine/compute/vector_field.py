@@ -124,21 +124,6 @@ class VectorFieldCalculator(EventHandler):
 
         result = calculator.create_radial_pattern(grid, center, radius, magnitude)
 
-        # 如果调用方提供了中心坐标，则同时在全局状态中放置一个标记，便于渲染或外部逻辑使用
-        try:
-            if center is not None:
-                cx = float(center[0])
-                cy = float(center[1])
-                markers = self._state_manager.get("markers", [])
-                if markers is None:
-                    markers = []
-                # 确保是列表副本再追加
-                markers = list(markers)
-                markers.append({"x": cx, "y": cy})
-                self._state_manager.set("markers", markers)
-        except Exception:
-            pass
-
         return result
 
     def create_tangential_pattern(self, grid: np.ndarray, center: Tuple[float, float] = None,
@@ -148,20 +133,6 @@ class VectorFieldCalculator(EventHandler):
         calculator = self._gpu_calculator if self._current_device == "gpu" and self._gpu_calculator else self._cpu_calculator
 
         result = calculator.create_tangential_pattern(grid, center, radius, magnitude)
-
-        # 如果调用方提供了中心坐标，则同时在全局状态中放置一个标记
-        try:
-            if center is not None:
-                cx = float(center[0])
-                cy = float(center[1])
-                markers = self._state_manager.get("markers", [])
-                if markers is None:
-                    markers = []
-                markers = list(markers)
-                markers.append({"x": cx, "y": cy})
-                self._state_manager.set("markers", markers)
-        except Exception:
-            pass
 
         return result
 
