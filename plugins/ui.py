@@ -120,8 +120,8 @@ class UIManager:
                     print(f"[示例] 点击位置超出网格: ({gx}, {gy})")
                     return
 
-                radius = 8
-                magnitude = 20 if self.vector_field_direction else -20
+                radius = 4
+                magnitude = 1 if self.vector_field_direction else -1
 
                 direction = "朝外" if self.vector_field_direction else "朝内"
                 pattern = "径向" if self.vector_field_pattern else "切线"
@@ -152,9 +152,27 @@ class UIManager:
 
         input_handler.register_mouse_callback(MouseMap.LEFT, MouseMap.PRESS, on_mouse_left_press)
 
+        # 添加鼠标中键按下和释放的回调
+        def on_mouse_middle_press():
+            # 设置中键按下标志
+            if hasattr(self.window, '_mouse_middle_pressed'):
+                self.window._mouse_middle_pressed = True
+            else:
+                setattr(self.window, '_mouse_middle_pressed', True)
+
+        def on_mouse_middle_release():
+            # 清除中键按下标志
+            if hasattr(self.window, '_mouse_middle_pressed'):
+                self.window._mouse_middle_pressed = False
+
+        # 注册鼠标中键回调
+        input_handler.register_mouse_callback(MouseMap.MIDDLE, MouseMap.PRESS, on_mouse_middle_press)
+        input_handler.register_mouse_callback(MouseMap.MIDDLE, MouseMap.RELEASE, on_mouse_middle_release)
+
     def process_mouse_drag(self):
         window = self.window
-        if getattr(window, "_mouse_pressed", False):
+        # 只在鼠标中键按下时才允许拖动视图
+        if getattr(window, "_mouse_middle_pressed", False):
             x, y = window._mouse_x, window._mouse_y
 
             dx = x - (self._last_mouse_x if self._last_mouse_x is not None else x)

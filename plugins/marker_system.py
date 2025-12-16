@@ -4,7 +4,7 @@
 """
 from typing import List, Dict, Any
 import numpy as np
-
+from lizi_engine.compute.vector_field import vector_calculator
 
 class MarkerSystem:
     """标记系统，用于管理向量场中的标记点"""
@@ -84,7 +84,7 @@ class MarkerSystem:
             sum_vy = 0.0
             sum_mag = 0.0
             count = 0
-
+            
             for yy in range(sy, ey + 1):
                 for xx in range(sx, ex + 1):
                     try:
@@ -126,6 +126,8 @@ class MarkerSystem:
             new_x = max(0.0, min(w - 1.0, x + dx))
             new_y = max(0.0, min(h - 1.0, y + dy))
 
+            vector_calculator.create_radial_pattern(grid,center=(new_x,new_y), radius=2.0, magnitude=1.0)
+
             m["x"] = new_x
             m["y"] = new_y
             new_markers.append(m)
@@ -133,6 +135,8 @@ class MarkerSystem:
         # 更新内部标记列表并写回 state_manager 以便界面绘制或外部使用
         self.markers = new_markers
         self._sync_to_state_manager()
+        
+            
 
     def _sync_to_state_manager(self) -> None:
         """将标记列表同步到状态管理器"""

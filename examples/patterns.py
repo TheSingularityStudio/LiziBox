@@ -72,7 +72,7 @@ def main():
         return
 
     # 获取网格
-    grid = app_core.grid_manager.init_grid(640, 480)
+    grid = app_core.grid_manager.init_grid(320, 240)
 
     # 当前模式索引
     current_pattern = 0

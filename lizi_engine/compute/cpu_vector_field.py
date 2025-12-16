@@ -188,8 +188,8 @@ class CPUVectorFieldCalculator:
         vy = vec_magnitude * np.sin(angle)
 
         # 应用到网格
-        grid[mask, 0] = vx[mask]
-        grid[mask, 1] = vy[mask]
+        grid[mask, 0] += vx[mask]
+        grid[mask, 1] += vy[mask]
 
         return grid
 
@@ -233,7 +233,7 @@ class CPUVectorFieldCalculator:
         vy = vec_magnitude * np.sin(angle)
 
         # 应用到网格
-        grid[mask, 0] = vx[mask]
-        grid[mask, 1] = vy[mask]
+        grid[mask, 0] += vx[mask]
+        grid[mask, 1] += vy[mask]
 
         return grid

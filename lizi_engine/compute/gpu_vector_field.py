@@ -224,7 +224,7 @@ class GPUVectorFieldCalculator:
             float vy = vec_magnitude * sin(angle);
 
             // 应用到网格
-            grid[idy * width + idx] = (float2)(vx, vy);
+            grid[idy * width + idx] += (float2)(vx, vy);
         }
         """
 
@@ -267,7 +267,7 @@ class GPUVectorFieldCalculator:
             float vy = vec_magnitude * sin(angle);
 
             // 应用到网格
-            grid[idy * width + idx] = (float2)(vx, vy);
+            grid[idy * width + idx] += (float2)(vx, vy);
         }
         """
 
