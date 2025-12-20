@@ -185,7 +185,7 @@ class UIManager:
                 # 使用标记系统的新功能在标记位置添加向量
                 #self.marker_system.add_vector_at_position(grid, closest_marker["x"], closest_marker["y"], vx, vy, radius=0.5)
                 # 使用微小向量创建函数
-                self.marker_system.create_tiny_vector(grid, closest_marker["x"], closest_marker["y"], mag=1.0, vx=vx, vy=vy)
+                self.marker_system.create_tiny_vector(grid, closest_marker["x"], closest_marker["y"], vx=vx, vy=vy)
 
                 # 保存选定的标记，以便在持续按下的过程中使用
                 self._selected_marker = closest_marker
@@ -260,15 +260,15 @@ class UIManager:
                         # 计算从标记到鼠标位置的方向向量
                         vx = gx - self._selected_marker["x"]
                         vy = gy - self._selected_marker["y"]
-
+                        '''
                         # 归一化向量
                         vec_len = (vx ** 2 + vy ** 2) ** 0.5
                         if vec_len > 0:
                             vx /= vec_len
                             vy /= vec_len
-
-                        # 使用标记系统的新功能在标记位置添加向量
-                        self.marker_system.add_vector_at_position(self._grid, self._selected_marker["x"], self._selected_marker["y"], vx, vy, radius=0.5)
+                        '''
+                        # 使用微小向量创建函数
+                        self.marker_system.create_tiny_vector(self._grid, x=self._selected_marker["x"], y=self._selected_marker["y"], vx=vx, vy=vy)
 
                         self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
             except Exception as e:
