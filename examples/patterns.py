@@ -15,6 +15,8 @@ from lizi_engine.core.app import AppCore
 from lizi_engine.window.window import Window
 from lizi_engine.compute.vector_field import vector_calculator
 from plugins.ui import UIManager
+from plugins.marker_system import MarkerSystem
+from plugins.controller import Controller
 
 class PatternType(Enum):
     """向量场模式类型"""
@@ -74,6 +76,12 @@ def main():
     # 获取网格
     grid = app_core.grid_manager.init_grid(320, 240)
 
+    # 初始化标记系统
+    marker_system = MarkerSystem(app_core)
+
+    # 初始化控制器
+    controller = Controller(app_core, vector_calculator, marker_system, grid)
+
     # 当前模式索引
     current_pattern = 0
     patterns = [
@@ -96,7 +104,7 @@ def main():
     print("[示例] 使用鼠标左键放置向量场，拖动视图，使用鼠标滚轮缩放视图")
 
     # 初始化 UI 管理器并注册回调（回调包含键盘、鼠标左键、清空等行为）
-    ui_manager = UIManager(app_core, window, vector_calculator)
+    ui_manager = UIManager(app_core, window, controller, marker_system)
 
     # 定义空格键切换模式回调以保持原有行为
     def _on_space():
