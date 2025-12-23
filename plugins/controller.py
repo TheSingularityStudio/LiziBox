@@ -116,8 +116,23 @@ class Controller:
             if closest_marker is None:
                 print("[示例] 未找到最近的标记")
                 return None
+            '''
+            # 计算从标记到鼠标位置的方向向量
+            vx = gx - closest_marker["x"]
+            vy = gy - closest_marker["y"]
 
-            print(f"[示例] 选中标记位置({closest_marker['x']:.2f}, {closest_marker['y']:.2f})")
+            # 归一化向量
+            vec_len = (vx ** 2 + vy ** 2) ** 0.5
+            if vec_len > 0:
+                vx /= vec_len
+                vy /= vec_len
+            
+            # 使用微小向量创建函数
+            self.marker_system.add_vector_at_position(self.grid, x=closest_marker["x"], y=closest_marker["y"], vx=vx, vy=vy)
+            
+            print(f"[示例] 在标记位置({closest_marker['x']:.2f}, {closest_marker['y']:.2f})添加向量({vx:.2f}, {vy:.2f})")
+            '''           
+            self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
 
             return closest_marker
         except Exception as e:
@@ -140,15 +155,17 @@ class Controller:
             world_x = cam_x + (mx - (viewport_width / 2.0)) / cam_zoom
             world_y = cam_y + (my - (viewport_height / 2.0)) / cam_zoom
 
-            gx = int(world_x / cell_size)
-            gy = int(world_y / cell_size)
+            gx = float(world_x / cell_size)
+            gy = float(world_y / cell_size)
 
             h, w = self.grid.shape[:2]
             if gx >= 0 and gx < w and gy >= 0 and gy < h:
-                # 设置标记位置到鼠标位置
-                selected_marker["x"] = float(gx)
-                selected_marker["y"] = float(gy)
-                selected_marker["dragged"] = True
+                # 计算从标记到鼠标位置的方向向量
+                vx = gx - selected_marker["x"]
+                vy = gy - selected_marker["y"]
+
+                # 使用微小向量创建函数
+                self.marker_system.add_vector_at_position(self.grid, x=selected_marker["x"], y=selected_marker["y"], vx=vx, vy=vy)
 
                 self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
         except Exception as e:

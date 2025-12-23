@@ -12,7 +12,7 @@ class MarkerSystem:
 
     def __init__(self, app_core):
         self.app_core = app_core
-        # 标记列表，存储浮点网格坐标 {'x':float,'y':float}
+        # 标记列表，存储浮点网格坐标 {'x':float,'y':float,'mag':float,'vx':float,'vy':float}
         self.markers = []
 
     def add_marker(self, x: float, y: float, mag: float = 1.0, vx: float = 0.0, vy: float = 0.0) -> None:
@@ -97,7 +97,7 @@ class MarkerSystem:
                 new_x = max(0.0, min(w - 1.0, x + m["vx"]))
                 new_y = max(0.0, min(h - 1.0, y + m["vy"]))
 
-                # 创建微小向量影响，使用标记的速度
+                # 创建微小向量影响
                 self.create_tiny_vector(grid, new_x, new_y, m["mag"])
 
                 m["x"] = new_x
