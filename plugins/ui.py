@@ -69,6 +69,8 @@ class UIManager:
                 except Exception as e:
                     print(f"[错误] on_c 回调异常: {e}")
             self.controller.clear_grid()
+            # 标记系统也应清空标记
+            self.marker_system.clear_markers()
 
         def on_v_press():
             if callable(on_v):
