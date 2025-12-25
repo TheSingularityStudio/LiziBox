@@ -397,6 +397,104 @@ class GPUVectorFieldCalculator:
 
         return grid
 
+    def create_tiny_vector(self, grid: np.ndarray, x: float, y: float, mag: float = 1.0) -> None:
+        """在指定位置创建一个微小的向量场影响,只影响位置本身及上下左右四个邻居"""
+        if not self._initialized:
+            raise RuntimeError("GPU计算器未初始化")
+
+        if not hasattr(grid, "ndim"):
+            return
+
+        h, w = grid.shape[0], grid.shape[1]
+
+        # 确保坐标在有效范围内
+        x = max(0.0, min(w - 1.0, float(x)))
+        y = max(0.0, min(h - 1.0, float(y)))
+
+        # 只影响当前位置及其上下左右邻居，使用浮点坐标
+        for dy in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                if abs(dx) + abs(dy) == 1:  # 上下左右邻居
+                    self.add_vector_at_position(grid, x + dx, y + dy, dx * mag, dy * mag)
+
+    def add_vector_at_position(self, grid: np.ndarray, x: float, y: float, vx: float, vy: float) -> None:
+        """在浮点坐标处添加向量，使用双线性插值的逆方法，将向量分布到四个最近的整数坐标"""
+        if not self._initialized:
+            raise RuntimeError("GPU计算器未初始化")
+
+        if not hasattr(grid, "ndim") or grid.ndim < 3 or grid.shape[2] < 2:
+            return
+
+        h, w = grid.shape[0], grid.shape[1]
+
+        # 确保坐标在有效范围内
+        x = max(0.0, min(w - 1.0, float(x)))
+        y = max(0.0, min(h - 1.0, float(y)))
+
+        # 计算四个最近的整数坐标
+        x0 = int(np.floor(x))
+        x1 = min(x0 + 1, w - 1)
+        y0 = int(np.floor(y))
+        y1 = min(y0 + 1, h - 1)
+
+        # 计算插值权重
+        wx = x - x0
+        wy = y - y0
+
+        # 双线性插值的逆：将向量按权重分布到四个角
+        w00 = (1 - wx) * (1 - wy)
+        w01 = wx * (1 - wy)
+        w10 = (1 - wx) * wy
+        w11 = wx * wy
+
+        try:
+            grid[y0, x0, 0] += w00 * vx
+            grid[y0, x0, 1] += w00 * vy
+            grid[y0, x1, 0] += w01 * vx
+            grid[y0, x1, 1] += w01 * vy
+            grid[y1, x0, 0] += w10 * vx
+            grid[y1, x0, 1] += w10 * vy
+            grid[y1, x1, 0] += w11 * vx
+            grid[y1, x1, 1] += w11 * vy
+        except Exception:
+            pass
+
+    def fit_vector_at_position(self, grid: np.ndarray, x: float, y: float) -> Tuple[float, float]:
+        """在浮点坐标处拟合向量值，使用双线性插值"""
+        if not self._initialized:
+            raise RuntimeError("GPU计算器未初始化")
+
+        if not hasattr(grid, "ndim") or grid.ndim < 3 or grid.shape[2] < 2:
+            return (0.0, 0.0)
+
+        h, w = grid.shape[0], grid.shape[1]
+
+        # 确保坐标在有效范围内
+        x = max(0.0, min(w - 1.0, float(x)))
+        y = max(0.0, min(h - 1.0, float(y)))
+
+        # 计算四个最近的整数坐标
+        x0 = int(np.floor(x))
+        x1 = min(x0 + 1, w - 1)
+        y0 = int(np.floor(y))
+        y1 = min(y0 + 1, h - 1)
+
+        # 获取四个角的向量值
+        v00 = (grid[y0, x0, 0], grid[y0, x0, 1])
+        v01 = (grid[y0, x1, 0], grid[y0, x1, 1])
+        v10 = (grid[y1, x0, 0], grid[y1, x0, 1])
+        v11 = (grid[y1, x1, 0], grid[y1, x1, 1])
+
+        # 计算插值权重
+        wx = x - x0
+        wy = y - y0
+
+        # 双线性插值
+        vx = (1 - wx) * (1 - wy) * v00[0] + wx * (1 - wy) * v01[0] + (1 - wx) * wy * v10[0] + wx * wy * v11[0]
+        vy = (1 - wx) * (1 - wy) * v00[1] + wx * (1 - wy) * v01[1] + (1 - wx) * wy * v10[1] + wx * wy * v11[1]
+
+        return (vx, vy)
+
     def cleanup(self) -> None:
         """清理资源"""
         if self._ctx:

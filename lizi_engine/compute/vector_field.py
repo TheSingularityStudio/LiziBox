@@ -124,6 +124,27 @@ class VectorFieldCalculator(EventHandler):
 
         return result
 
+    def create_tiny_vector(self, grid: np.ndarray, x: float, y: float, mag: float = 1.0) -> None:
+        """在指定位置创建一个微小的向量场影响,只影响位置本身及上下左右四个邻居"""
+        # 根据当前设备选择计算器
+        calculator = self._gpu_calculator if self._current_device == "gpu" and self._gpu_calculator else self._cpu_calculator
+
+        calculator.create_tiny_vector(grid, x, y, mag)
+
+    def add_vector_at_position(self, grid: np.ndarray, x: float, y: float, vx: float, vy: float) -> None:
+        """在浮点坐标处添加向量，使用双线性插值的逆方法，将向量分布到四个最近的整数坐标"""
+        # 根据当前设备选择计算器
+        calculator = self._gpu_calculator if self._current_device == "gpu" and self._gpu_calculator else self._cpu_calculator
+
+        calculator.add_vector_at_position(grid, x, y, vx, vy)
+
+    def fit_vector_at_position(self, grid: np.ndarray, x: float, y: float) -> Tuple[float, float]:
+        """在浮点坐标处拟合向量值，使用双线性插值"""
+        # 根据当前设备选择计算器
+        calculator = self._gpu_calculator if self._current_device == "gpu" and self._gpu_calculator else self._cpu_calculator
+
+        return calculator.fit_vector_at_position(grid, x, y)
+
     def handle(self, event: Event) -> None:
         """处理事件"""
         if event.type == EventType.APP_INITIALIZED:

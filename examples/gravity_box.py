@@ -43,7 +43,7 @@ def main():
         return
 
     # 获取网格
-    grid = app_core.grid_manager.init_grid(64, 48)
+    grid = app_core.grid_manager.init_grid(64, 64)
 
     # 初始化视图
     try:

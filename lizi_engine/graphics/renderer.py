@@ -285,16 +285,16 @@ class VectorFieldRenderer(EventHandler):
         vertices = []
 
         # 水平线
-        for y in range(h + 1):
+        for y in range(h):
             py = y * cell_size
             vertices.extend([0, py, grid_color[0], grid_color[1], grid_color[2]])
-            vertices.extend([w * cell_size, py, grid_color[0], grid_color[1], grid_color[2]])
+            vertices.extend([(w - 1) * cell_size, py, grid_color[0], grid_color[1], grid_color[2]])
 
         # 垂直线
-        for x in range(w + 1):
+        for x in range(w):
             px = x * cell_size
             vertices.extend([px, 0, grid_color[0], grid_color[1], grid_color[2]])
-            vertices.extend([px, h * cell_size, grid_color[0], grid_color[1], grid_color[2]])
+            vertices.extend([px, (h - 1) * cell_size, grid_color[0], grid_color[1], grid_color[2]])
 
         # 绑定VAO和VBO
         glBindVertexArray(self._grid_vao)
