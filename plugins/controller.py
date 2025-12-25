@@ -52,8 +52,8 @@ class Controller:
             world_x = cam_x + (mx - (viewport_width / 2.0)) / cam_zoom
             world_y = cam_y + (my - (viewport_height / 2.0)) / cam_zoom
 
-            gx = int(world_x / cell_size)
-            gy = int(world_y / cell_size)
+            gx = world_x / cell_size
+            gy = world_y / cell_size
 
             h, w = self.grid.shape[:2]
             if gx < 0 or gx >= w or gy < 0 or gy >= h:
@@ -61,15 +61,16 @@ class Controller:
                 return
 
             radius = 2
-            magnitude = 1 if self.vector_field_direction else -1
+            mag = 2
+            magnitude = mag if self.vector_field_direction else -mag
 
             direction = "朝外" if self.vector_field_direction else "朝内"
-            print(f"[示例] 在网格位置放置向量场: ({gx}, {gy}), radius={radius}, mag={magnitude}, 方向={direction}")
+            #print(f"[示例] 在网格位置放置向量场: ({gx}, {gy}), radius={radius}, mag={magnitude}, 方向={direction}")
 
-            self.vector_calculator.create_radial_pattern(self.grid, center=(gx, gy), radius=radius, magnitude=magnitude)
+            self.vector_calculator.create_radial_pattern(self.grid, center=(int(gx), int(gy)), radius=radius, magnitude=magnitude)
 
             # 同时创建一个标记，初始放在点击处（浮点位置）
-            self.marker_system.add_marker(float(gx), float(gy), float(magnitude))
+            self.marker_system.add_marker(gx, gy, float(magnitude))
 
             self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
         except Exception as e:
@@ -88,8 +89,8 @@ class Controller:
             world_x = cam_x + (mx - (viewport_width / 2.0)) / cam_zoom
             world_y = cam_y + (my - (viewport_height / 2.0)) / cam_zoom
 
-            gx = int(world_x / cell_size)
-            gy = int(world_y / cell_size)
+            gx = world_x / cell_size
+            gy = world_y / cell_size
 
             h, w = self.grid.shape[:2]
             if gx < 0 or gx >= w or gy < 0 or gy >= h:
