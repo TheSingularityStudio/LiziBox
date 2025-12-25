@@ -67,7 +67,7 @@ class Controller:
             direction = "朝外" if self.vector_field_direction else "朝内"
             #print(f"[示例] 在网格位置放置向量场: ({gx}, {gy}), radius={radius}, mag={magnitude}, 方向={direction}")
 
-            self.vector_calculator.create_radial_pattern(self.grid, center=(int(gx), int(gy)), radius=radius, magnitude=magnitude)
+            #self.vector_calculator.create_radial_pattern(self.grid, center=(int(gx), int(gy)), radius=radius, magnitude=magnitude)
 
             # 同时创建一个标记，初始放在点击处（浮点位置）
             self.marker_system.add_marker(gx, gy, float(magnitude))
@@ -171,3 +171,4 @@ class Controller:
                 self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
         except Exception as e:
             print(f"[错误] 处理左键持续按下时发生异常: {e}")
+
