@@ -7,7 +7,7 @@ LiziEngine 是一个由向量场驱动的物理引擎，它通过模拟现实中
 
 ## 视频演示
 
-[【重力模拟与电荷模拟 【物理引擎开发日志#01】-哔哩哔哩】](https://b23.tv/1Bj1y19)
+[重力模拟与电荷模拟 【物理引擎开发日志#01】-哔哩哔哩](https://b23.tv/1Bj1y19)
 
 [A Physics Engine Without Collision Detection -Youtube](https://youtube.com/shorts/vhOnfVl3CO8?si=xlLsO2X8CiU1n6YD)
 
