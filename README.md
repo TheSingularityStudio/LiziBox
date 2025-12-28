@@ -1,6 +1,10 @@
 
 # LiziEngine
 
+![Licence](https://img.shields.io/badge/Licence-MIT-96d35f?style=flat)
+![Version](https://img.shields.io/badge/Version-0.1.0Alpha-000000?style=flat)
+![Language](https://img.shields.io/badge/Language-Python-f5ec00?style=flat)
+
 ## 项目概述
 
 LiziEngine 是一个由向量场驱动的物理引擎，它通过模拟现实中的力场（如电磁力）来驱动实体运动，从而在根本上解决传统方法在处理碰撞检测的性能瓶颈。相比与每个实体互相遍历计算，本项目仅需让它们独立计算坐标下的向量值即可处理受力问题。
