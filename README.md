@@ -216,7 +216,7 @@ create_tiny_vector(self, grid, x, y, mag)
 
 ## 许可证
 
-MIT License
+MIT License[#-license]
 
 ## 联系方式
 
