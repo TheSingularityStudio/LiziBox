@@ -65,6 +65,13 @@ class GUIManager(EventHandler):
 
             # 初始化Dear PyGui
             dpg.create_context()
+
+            # 设置中文字体支持
+            with dpg.font_registry():
+                with dpg.font("C:/Windows/Fonts/simsun.ttc", 16) as font:
+                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Chinese_Full)
+                    dpg.bind_font(font)
+
             dpg.create_viewport(title=self._title, width=self._width, height=self._height)
 
             # 设置Dear PyGui主题
