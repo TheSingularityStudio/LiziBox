@@ -23,6 +23,7 @@ class ControlPanel(QWidget):
     zoom_changed = pyqtSignal(float)
     vector_scale_changed = pyqtSignal(float)
     line_width_changed = pyqtSignal(float)
+    realtime_update_toggled = pyqtSignal(bool)
 
     def __init__(self, config_manager=None, state_manager=None):
         super().__init__()
@@ -227,6 +228,7 @@ class ControlPanel(QWidget):
         # Real-time updates checkbox
         self.realtime_checkbox = QCheckBox("Real-time Updates")
         self.realtime_checkbox.setChecked(True)
+        self.realtime_checkbox.stateChanged.connect(self._on_realtime_toggled)
         layout.addWidget(self.realtime_checkbox)
 
         # Show grid checkbox
@@ -292,6 +294,11 @@ class ControlPanel(QWidget):
         width_value = value / 10.0
         self.line_width_value_label.setText(".2f")
         self.line_width_changed.emit(width_value)
+
+    def _on_realtime_toggled(self, state):
+        """Handle real-time updates checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        self.realtime_update_toggled.emit(enabled)
 
     def update_status_info(self, fps=None, grid_size=None, marker_count=None,
                           camera_pos=None):

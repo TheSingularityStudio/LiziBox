@@ -176,3 +176,32 @@ class Controller:
         except Exception as e:
             print(f"[错误] 处理左键持续按下时发生异常: {e}")
 
+    def generate_tangential_pattern(self):
+        """生成切向模式"""
+        try:
+            # 这里可以实现切向模式的生成逻辑
+            # 例如，创建一个围绕中心的旋转向量场
+            h, w = self.grid.shape[:2]
+            center_x, center_y = w // 2, h // 2
+
+            for y in range(h):
+                for x in range(w):
+                    # 计算从中心到当前位置的向量
+                    dx = x - center_x
+                    dy = y - center_y
+                    dist = (dx**2 + dy**2)**0.5
+
+                    if dist > 0:
+                        # 切向向量：垂直于径向向量
+                        tx = -dy / dist
+                        ty = dx / dist
+
+                        # 设置向量场
+                        self.grid[y, x, 0] = tx * 0.5  # vx
+                        self.grid[y, x, 1] = ty * 0.5  # vy
+
+            self.app_core.state_manager.update({"view_changed": True, "grid_updated": True})
+            print("[控制器] 已生成切向模式")
+        except Exception as e:
+            print(f"[错误] 生成切向模式时发生异常: {e}")
+

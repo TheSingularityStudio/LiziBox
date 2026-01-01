@@ -36,6 +36,9 @@ class MainWindow(QMainWindow):
         self.control_panel = None
         self.event_manager = EventManager()
 
+        # Real-time updates state
+        self.realtime_updates_enabled = False
+
         # Window properties
         self.setWindowTitle("LiziEngine - PyQt6 GUI")
         self.setGeometry(100, 100, 1200, 800)
@@ -71,7 +74,8 @@ class MainWindow(QMainWindow):
         self.opengl_widget = OpenGLWidget(
             self.renderer,
             self.state_manager,
-            self.config_manager
+            self.config_manager,
+            self.marker_system
         )
         splitter.addWidget(self.opengl_widget)
 
@@ -151,19 +155,31 @@ class MainWindow(QMainWindow):
             self.control_panel.zoom_changed.connect(self._handle_zoom_change)
             self.control_panel.vector_scale_changed.connect(self._handle_vector_scale_change)
             self.control_panel.line_width_changed.connect(self._handle_line_width_change)
+            self.control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
 
         # Connect OpenGL widget signals
         if self.opengl_widget:
             self.opengl_widget.marker_selected.connect(self._handle_marker_selection)
 
-        # Connect event manager
+        # Connect event manager signals
         self.event_manager.grid_updated.connect(self._handle_grid_update)
         self.event_manager.view_changed.connect(self._handle_view_change)
+        self.event_manager.marker_selected.connect(self._handle_marker_selection)
+        self.event_manager.marker_added.connect(self._handle_marker_added)
+        self.event_manager.markers_cleared.connect(self._handle_markers_cleared)
+        self.event_manager.fps_updated.connect(self._handle_fps_update)
+        self.event_manager.config_changed.connect(self._handle_config_change)
 
     def _update_loop(self):
         """Main update loop"""
         # Update status information
         self._update_status_info()
+
+        # Real-time vector field updates
+        if self.realtime_updates_enabled and self.controller and self.opengl_widget and self.opengl_widget.grid is not None:
+            self.controller.vector_calculator.update_grid_with_adjacent_sum(self.opengl_widget.grid)
+            if self.state_manager:
+                self.state_manager.update({"grid_updated": True})
 
         # Update OpenGL widget
         if self.opengl_widget:
@@ -196,13 +212,15 @@ class MainWindow(QMainWindow):
         """Reset view to default"""
         if self.controller:
             self.controller.reset_view()
-        elif self.state_manager:
-            self.state_manager.update({
-                "cam_x": 0.0,
-                "cam_y": 0.0,
-                "cam_zoom": 1.0,
-                "view_changed": True
-            })
+        else:
+            # Fallback when no controller available
+            if self.state_manager:
+                self.state_manager.update({
+                    "cam_x": 0.0,
+                    "cam_y": 0.0,
+                    "cam_zoom": 1.0,
+                    "view_changed": True
+                })
 
     def _toggle_grid(self):
         """Toggle grid visibility"""
@@ -251,6 +269,10 @@ class MainWindow(QMainWindow):
         if self.config_manager:
             self.config_manager.set("line_width", width_value)
 
+    def _handle_realtime_toggle(self, enabled: bool):
+        """Handle real-time updates toggle"""
+        self.realtime_updates_enabled = enabled
+
     def _handle_marker_selection(self, marker_id: int):
         """Handle marker selection"""
         # Update control panel or perform other actions
@@ -265,6 +287,27 @@ class MainWindow(QMainWindow):
         """Handle view change event"""
         if self.opengl_widget:
             self.opengl_widget.update()
+
+    def _handle_marker_added(self, x: int, y: int):
+        """Handle marker added event"""
+        self._update_status_info()
+
+    def _handle_markers_cleared(self):
+        """Handle markers cleared event"""
+        self._update_status_info()
+
+    def _handle_fps_update(self, fps: int):
+        """Handle FPS update event"""
+        self.fps_label.setText(f"FPS: {fps}")
+
+    def _handle_config_change(self, key: str, value: Any):
+        """Handle configuration change event"""
+        # Update UI components based on config changes
+        if key == "grid_size":
+            self._update_status_info()
+        elif key == "show_grid":
+            if self.opengl_widget:
+                self.opengl_widget.update()
 
     def set_grid(self, grid):
         """Set the vector field grid"""
