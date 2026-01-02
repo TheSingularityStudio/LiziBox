@@ -148,10 +148,6 @@ class MainWindow(QMainWindow):
         """Connect signals between components"""
         # Connect control panel signals
         if self.control_panel:
-            self.control_panel.view_reset_requested.connect(self._reset_view)
-            self.control_panel.grid_toggle_requested.connect(self._toggle_grid)
-            self.control_panel.grid_clear_requested.connect(self._clear_grid)
-            self.control_panel.tangential_generate_requested.connect(self._generate_tangential)
             self.control_panel.marker_add_requested.connect(self._add_marker)
             self.control_panel.marker_clear_requested.connect(self._clear_markers)
             self.control_panel.zoom_changed.connect(self._handle_zoom_change)

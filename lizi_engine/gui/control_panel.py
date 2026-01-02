@@ -14,10 +14,6 @@ class ControlPanel(QWidget):
     """Control panel with all GUI controls"""
 
     # Signals emitted when controls are activated
-    view_reset_requested = pyqtSignal()
-    grid_toggle_requested = pyqtSignal()
-    grid_clear_requested = pyqtSignal()
-    tangential_generate_requested = pyqtSignal()
     marker_add_requested = pyqtSignal()
     marker_clear_requested = pyqtSignal()
     zoom_changed = pyqtSignal(float)
@@ -115,10 +111,6 @@ class ControlPanel(QWidget):
         settings_group = self._create_settings_controls()
         layout.addWidget(settings_group)
 
-        # Status Information
-        status_group = self._create_status_info()
-        layout.addWidget(status_group)
-
         # Add stretch to push everything to the top
         layout.addStretch()
 
@@ -127,30 +119,10 @@ class ControlPanel(QWidget):
         group = QGroupBox("视图控制")
         layout = QVBoxLayout(group)
 
-        # Reset View button
-        reset_btn = QPushButton("重置视图 (R)")
-        reset_btn.clicked.connect(self.view_reset_requested.emit)
-        layout.addWidget(reset_btn)
-
         # Center View button
         center_btn = QPushButton("居中视图")
         center_btn.clicked.connect(self._center_view)
         layout.addWidget(center_btn)
-
-        # Toggle Grid button
-        grid_btn = QPushButton("切换网格 (G)")
-        grid_btn.clicked.connect(self.grid_toggle_requested.emit)
-        layout.addWidget(grid_btn)
-
-        # Clear Grid button
-        clear_btn = QPushButton("清空网格 (C)")
-        clear_btn.clicked.connect(self.grid_clear_requested.emit)
-        layout.addWidget(clear_btn)
-
-        # Generate Tangential button
-        tangential_btn = QPushButton("生成切向模式 (空格)")
-        tangential_btn.clicked.connect(self.tangential_generate_requested.emit)
-        layout.addWidget(tangential_btn)
 
         return group
 
@@ -231,38 +203,10 @@ class ControlPanel(QWidget):
         self.realtime_checkbox.stateChanged.connect(self._on_realtime_toggled)
         layout.addWidget(self.realtime_checkbox)
 
-        # Show grid checkbox
-        self.show_grid_checkbox = QCheckBox("Show Grid")
-        self.show_grid_checkbox.setChecked(True)
-        layout.addWidget(self.show_grid_checkbox)
-
         # Show vectors checkbox
         self.show_vectors_checkbox = QCheckBox("Show Vectors")
         self.show_vectors_checkbox.setChecked(True)
         layout.addWidget(self.show_vectors_checkbox)
-
-        return group
-
-    def _create_status_info(self):
-        """Create status information group"""
-        group = QGroupBox("Status")
-        layout = QVBoxLayout(group)
-
-        # FPS display
-        self.fps_label = QLabel("帧率: --")
-        layout.addWidget(self.fps_label)
-
-        # Grid size display
-        self.grid_size_label = QLabel("网格尺寸: --")
-        layout.addWidget(self.grid_size_label)
-
-        # Marker count display
-        self.marker_count_label = QLabel("标记: --")
-        layout.addWidget(self.marker_count_label)
-
-        # Camera position display
-        self.camera_pos_label = QLabel("相机: (--, --)")
-        layout.addWidget(self.camera_pos_label)
 
         return group
 
@@ -320,6 +264,5 @@ class ControlPanel(QWidget):
         """Get current settings"""
         return {
             'realtime_updates': self.realtime_checkbox.isChecked(),
-            'show_grid': self.show_grid_checkbox.isChecked(),
             'show_vectors': self.show_vectors_checkbox.isChecked()
         }
