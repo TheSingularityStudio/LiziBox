@@ -280,19 +280,19 @@ class ControlPanel(QWidget):
     def _on_zoom_changed(self, value):
         """Handle zoom slider change"""
         zoom_value = value / 100.0
-        self.zoom_value_label.setText(".2f")
+        self.zoom_value_label.setText(f"{zoom_value:.2f}")
         self.zoom_changed.emit(zoom_value)
 
     def _on_vector_scale_changed(self, value):
         """Handle vector scale slider change"""
         scale_value = value / 100.0
-        self.vector_scale_value_label.setText(".2f")
+        self.vector_scale_value_label.setText(f"{scale_value:.2f}")
         self.vector_scale_changed.emit(scale_value)
 
     def _on_line_width_changed(self, value):
         """Handle line width slider change"""
         width_value = value / 10.0
-        self.line_width_value_label.setText(".2f")
+        self.line_width_value_label.setText(f"{width_value:.2f}")
         self.line_width_changed.emit(width_value)
 
     def _on_realtime_toggled(self, state):
@@ -314,7 +314,7 @@ class ControlPanel(QWidget):
 
         if camera_pos is not None:
             cam_x, cam_y = camera_pos
-            self.camera_pos_label.setText(".2f")
+            self.camera_pos_label.setText(f"({cam_x:.2f}, {cam_y:.2f})")
 
     def get_settings(self):
         """Get current settings"""
