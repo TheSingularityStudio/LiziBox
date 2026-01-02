@@ -31,7 +31,8 @@
         "zoom": 10.0
     },
     "show": {
-        "grid": true
+        "grid": true,
+        "vectors": true
     },
     "background": {
         "color": [
