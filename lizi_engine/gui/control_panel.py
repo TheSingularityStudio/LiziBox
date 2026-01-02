@@ -92,6 +92,9 @@ class ControlPanel(QWidget):
             gravity_enabled = self.config_manager.get("gravity_enabled", False)
             self.gravity_checkbox.setChecked(gravity_enabled)
 
+            friction_enabled = self.config_manager.get("friction_enabled", False)
+            self.friction_checkbox.setChecked(friction_enabled)
+
     def _setup_ui(self):
         """Set up the user interface"""
         layout = QVBoxLayout(self)

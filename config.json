@@ -26,13 +26,13 @@
         }
     },
     "cam": {
-        "x": 44.023612470553545,
-        "y": 35.3175109492699,
-        "zoom": 9.605960100000004
+        "x": 32.623612470553546,
+        "y": 35.017510949269905,
+        "zoom": 8.1
     },
     "show": {
         "grid": true,
-        "vectors": true
+        "vectors": false
     },
     "background": {
         "color": [
@@ -55,6 +55,9 @@
         }
     },
     "gravity": {
+        "enabled": false
+    },
+    "friction": {
         "enabled": true
     }
 }

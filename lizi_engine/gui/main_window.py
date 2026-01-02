@@ -203,6 +203,8 @@ class MainWindow(QMainWindow):
             self.control_panel.show_vectors_toggled.connect(self._handle_show_vectors_toggle)
             self.control_panel.gravity_toggled.connect(self._handle_gravity_toggle)
             self.control_panel.gravity_strength_changed.connect(self._handle_gravity_strength_change)
+            self.control_panel.friction_toggled.connect(self._handle_friction_toggle)
+            self.control_panel.friction_strength_changed.connect(self._handle_friction_strength_change)
 
         # Connect OpenGL widget signals
         if self.opengl_widget:
@@ -231,15 +233,18 @@ class MainWindow(QMainWindow):
 
             # 在更新标记之前应用力到向量场
             if self.marker_system:
-                # 如果启用重力
-                if self.config_manager and self.config_manager.get("gravity_enabled", False):
-                    for marker in self.marker_system.get_markers():
+                gravity_enabled = self.config_manager and self.config_manager.get("gravity_enabled", False)
+                friction_enabled = self.config_manager and self.config_manager.get("friction_enabled", False)
+
+                # 合并循环：同时处理重力和摩擦
+                for marker in self.marker_system.get_markers():
+                    # 如果启用重力
+                    if gravity_enabled:
                         # 向向量场网格添加向下的重力力（类似于gravity_box.py）
                         self.marker_system.add_vector_at_position(self.opengl_widget.grid, x=marker["x"], y=marker["y"], vy=self.gravity_strength, vx=0.0)
 
-                # 如果启用摩擦 - 反对粒子速度
-                if self.config_manager and self.config_manager.get("friction_enabled", False):
-                    for marker in self.marker_system.get_markers():
+                    # 如果启用摩擦 - 反对粒子速度
+                    if friction_enabled:
                         # 摩擦作用于速度方向相反
                         # 在标记位置添加一个向量，反对其当前速度
                         friction_vx = -marker["vx"] * self.friction_strength
