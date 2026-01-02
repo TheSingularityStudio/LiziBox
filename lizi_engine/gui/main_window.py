@@ -3,7 +3,9 @@ PyQt6-based Main Window for LiziEngine GUI
 Provides the main application window with integrated OpenGL rendering
 """
 import sys
+import time
 from typing import Optional, Dict, Any
+import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QSplitter, QFrame, QLabel, QPushButton, QSlider, QGroupBox,
@@ -37,7 +39,7 @@ class MainWindow(QMainWindow):
         self.event_manager = EventManager()
 
         # Real-time updates state
-        self.realtime_updates_enabled = False
+        self.realtime_updates_enabled = True
 
         # Window properties
         self.setWindowTitle("LiziEngine - PyQt6 GUI")
@@ -181,6 +183,10 @@ class MainWindow(QMainWindow):
             if self.state_manager:
                 self.state_manager.update({"grid_updated": True})
 
+            # Update markers based on the vector field
+            if self.marker_system:
+                self.marker_system.update_markers(self.opengl_widget.grid)
+
         # Update OpenGL widget
         if self.opengl_widget:
             self.opengl_widget.update()
@@ -190,8 +196,22 @@ class MainWindow(QMainWindow):
         if not self.state_manager:
             return
 
-        # FPS (simplified)
-        fps = 60  # In a real implementation, calculate actual FPS
+        # Calculate actual FPS
+        current_time = time.time()
+        if not hasattr(self, '_last_fps_update'):
+            self._last_fps_update = current_time
+            self._frame_count = 0
+            fps = 60  # Initial estimate
+        else:
+            self._frame_count += 1
+            time_diff = current_time - self._last_fps_update
+            if time_diff >= 0.5:  # Update FPS every 0.5 seconds
+                fps = int(self._frame_count / time_diff)
+                self._frame_count = 0
+                self._last_fps_update = current_time
+            else:
+                fps = getattr(self, '_last_fps', 60)
+        self._last_fps = fps
         self.fps_label.setText(f"FPS: {fps}")
 
         # Grid size
@@ -206,7 +226,7 @@ class MainWindow(QMainWindow):
         cam_x = self.state_manager.get("cam_x", 0.0)
         cam_y = self.state_manager.get("cam_y", 0.0)
         cam_zoom = self.state_manager.get("cam_zoom", 1.0)
-        self.camera_label.setText(".2f")
+        self.camera_label.setText(f"Camera: ({cam_x:.2f}, {cam_y:.2f}) Zoom: {cam_zoom:.2f}")
 
     def _reset_view(self):
         """Reset view to default"""
