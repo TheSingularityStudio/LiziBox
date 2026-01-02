@@ -212,12 +212,15 @@ class ControlPanel(QWidget):
 
     def _center_view(self):
         """Center the view on the grid"""
-        if self.state_manager:
-            # This would need grid information to center properly
-            # For now, just reset to origin
+        if self.state_manager and self.config_manager:
+            # Get grid size to calculate center
+            grid_size = self.config_manager.get("grid_size", 64)
+            grid_center_x = grid_size / 2.0
+            grid_center_y = grid_size / 2.0
+
             self.state_manager.update({
-                "cam_x": 0.0,
-                "cam_y": 0.0,
+                "cam_x": grid_center_x,
+                "cam_y": grid_center_y,
                 "view_changed": True
             })
 
@@ -226,6 +229,14 @@ class ControlPanel(QWidget):
         zoom_value = value / 100.0
         self.zoom_value_label.setText(f"{zoom_value:.2f}")
         self.zoom_changed.emit(zoom_value)
+
+    def update_zoom_slider(self, zoom_value: float):
+        """Update zoom slider to match current zoom value"""
+        slider_value = int(zoom_value * 100.0)
+        self.zoom_slider.blockSignals(True)  # Prevent recursive signal emission
+        self.zoom_slider.setValue(slider_value)
+        self.zoom_value_label.setText(f"{zoom_value:.2f}")
+        self.zoom_slider.blockSignals(False)
 
     def _on_vector_scale_changed(self, value):
         """Handle vector scale slider change"""

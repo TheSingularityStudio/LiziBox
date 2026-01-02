@@ -274,6 +274,9 @@ class MainWindow(QMainWindow):
                 "cam_zoom": zoom_value,
                 "view_changed": True
             })
+            # Update control panel slider to match
+            if self.control_panel:
+                self.control_panel.update_zoom_slider(zoom_value)
 
     def _handle_vector_scale_change(self, scale_value: float):
         """Handle vector scale change"""
