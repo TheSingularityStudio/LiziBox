@@ -233,9 +233,8 @@ class MainWindow(QMainWindow):
                 # Apply gravity if enabled
                 if self.config_manager and self.config_manager.get("gravity_enabled", False):
                     for marker in self.marker_system.get_markers():
-                        # Add downward gravity force (similar to gravity_box.py)
-                        marker["vx"] += 0.0
-                        marker["vy"] += self.gravity_strength
+                        # Add downward gravity force to the vector field grid (similar to gravity_box.py)
+                        self.marker_system.add_vector_at_position(self.opengl_widget.grid, x=marker["x"], y=marker["y"], vy=self.gravity_strength, vx=0.0)
 
         # Update OpenGL widget
         if self.opengl_widget:

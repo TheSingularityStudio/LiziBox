@@ -85,6 +85,11 @@ class ControlPanel(QWidget):
 
         self._setup_ui()
 
+        # Sync UI with config manager
+        if self.config_manager:
+            gravity_enabled = self.config_manager.get("gravity_enabled", False)
+            self.gravity_checkbox.setChecked(gravity_enabled)
+
     def _setup_ui(self):
         """Set up the user interface"""
         layout = QVBoxLayout(self)
