@@ -85,6 +85,9 @@ class ConfigManager:
         self.register_option("render_vector_lines", True, "是否渲染向量线条", type="boolean")
         self.register_option("show_vectors", True, "是否显示向量", type="boolean")
 
+        # 重力配置
+        self.register_option("gravity_enabled", False, "是否启用重力", type="boolean")
+
     def register_option(self, key: str, default: Any, description: str = "", 
                        type: str = "string", options: List[Any] = None,
                        min_value: Optional[Union[int, float]] = None,

@@ -21,6 +21,8 @@ class ControlPanel(QWidget):
     line_width_changed = pyqtSignal(float)
     realtime_update_toggled = pyqtSignal(bool)
     show_vectors_toggled = pyqtSignal(bool)
+    gravity_toggled = pyqtSignal(bool)
+    gravity_strength_changed = pyqtSignal(float)
 
     def __init__(self, config_manager=None, state_manager=None):
         super().__init__()
@@ -210,6 +212,26 @@ class ControlPanel(QWidget):
         self.show_vectors_checkbox.stateChanged.connect(self._on_show_vectors_toggled)
         layout.addWidget(self.show_vectors_checkbox)
 
+        # Gravity checkbox
+        self.gravity_checkbox = QCheckBox("Enable Gravity")
+        self.gravity_checkbox.setChecked(False)
+        self.gravity_checkbox.stateChanged.connect(self._on_gravity_toggled)
+        layout.addWidget(self.gravity_checkbox)
+
+        # Gravity strength slider
+        gravity_layout = QHBoxLayout()
+        gravity_label = QLabel("Gravity Strength:")
+        self.gravity_strength_slider = QSlider(Qt.Orientation.Horizontal)
+        self.gravity_strength_slider.setRange(0, 200)  # 0.0 to 2.0
+        self.gravity_strength_slider.setValue(10)  # Default 0.1
+        self.gravity_strength_slider.valueChanged.connect(self._on_gravity_strength_changed)
+        self.gravity_strength_value_label = QLabel("0.10")
+
+        gravity_layout.addWidget(gravity_label)
+        gravity_layout.addWidget(self.gravity_strength_slider)
+        gravity_layout.addWidget(self.gravity_strength_value_label)
+        layout.addLayout(gravity_layout)
+
         return group
 
     def _center_view(self):
@@ -261,6 +283,17 @@ class ControlPanel(QWidget):
         """Handle show vectors checkbox toggle"""
         enabled = state == Qt.CheckState.Checked.value
         self.show_vectors_toggled.emit(enabled)
+
+    def _on_gravity_toggled(self, state):
+        """Handle gravity checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        self.gravity_toggled.emit(enabled)
+
+    def _on_gravity_strength_changed(self, value):
+        """Handle gravity strength slider change"""
+        strength_value = value / 10.0
+        self.gravity_strength_value_label.setText(f"{strength_value:.2f}")
+        self.gravity_strength_changed.emit(strength_value)
 
     def update_status_info(self, fps=None, grid_size=None, marker_count=None,
                           camera_pos=None):

@@ -41,6 +41,9 @@ class MainWindow(QMainWindow):
         # Real-time updates state
         self.realtime_updates_enabled = True
 
+        # Gravity strength
+        self.gravity_strength = 0.1
+
         # Window properties
         self.setWindowTitle("粒子引擎 - PyQt6 GUI")
         self.setGeometry(100, 100, 1200, 800)
@@ -195,6 +198,8 @@ class MainWindow(QMainWindow):
             self.control_panel.line_width_changed.connect(self._handle_line_width_change)
             self.control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
             self.control_panel.show_vectors_toggled.connect(self._handle_show_vectors_toggle)
+            self.control_panel.gravity_toggled.connect(self._handle_gravity_toggle)
+            self.control_panel.gravity_strength_changed.connect(self._handle_gravity_strength_change)
 
         # Connect OpenGL widget signals
         if self.opengl_widget:
@@ -224,6 +229,13 @@ class MainWindow(QMainWindow):
             # Update markers based on the vector field
             if self.marker_system:
                 self.marker_system.update_markers(self.opengl_widget.grid)
+
+                # Apply gravity if enabled
+                if self.config_manager and self.config_manager.get("gravity_enabled", False):
+                    for marker in self.marker_system.get_markers():
+                        # Add downward gravity force (similar to gravity_box.py)
+                        marker["vx"] += 0.0
+                        marker["vy"] += self.gravity_strength
 
         # Update OpenGL widget
         if self.opengl_widget:
@@ -338,6 +350,15 @@ class MainWindow(QMainWindow):
         """Handle show vectors toggle"""
         if self.config_manager:
             self.config_manager.set("show_vectors", enabled)
+
+    def _handle_gravity_toggle(self, enabled: bool):
+        """Handle gravity toggle"""
+        if self.config_manager:
+            self.config_manager.set("gravity_enabled", enabled)
+
+    def _handle_gravity_strength_change(self, strength_value: float):
+        """Handle gravity strength change"""
+        self.gravity_strength = strength_value
 
     def _handle_marker_selection(self, marker_id: int):
         """Handle marker selection"""
