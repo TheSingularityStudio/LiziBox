@@ -263,7 +263,7 @@ class OpenGLWidget(QOpenGLWidget):
         # Movement should be inversely proportional to zoom (higher zoom = slower panning)
         pan_speed = 1.0 / cam_zoom
         world_delta_x = -delta_x * pan_speed
-        world_delta_y = delta_y * pan_speed  # Y is inverted in screen coordinates
+        world_delta_y = -delta_y * pan_speed  # Y is inverted in screen coordinates
 
         # Update camera position
         new_cam_x = cam_x + world_delta_x
