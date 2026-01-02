@@ -32,6 +32,9 @@ def main():
     grid_size = config_manager.get("grid_size", 64)
     grid = np.zeros((grid_size, grid_size, 2), dtype=np.float32)
 
+    # Set example vector field - create tangential pattern
+    vector_calculator.create_tangential_pattern(grid, magnitude=1.0)
+
     # Initialize systems
     marker_system = MarkerSystem(app_core)
     controller = Controller(app_core, vector_calculator, marker_system, grid)

@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         self.event_manager = EventManager()
 
         # Real-time updates state
-        self.realtime_updates_enabled = False
+        self.realtime_updates_enabled = True
 
         # Window properties
         self.setWindowTitle("LiziEngine - PyQt6 GUI")
@@ -182,6 +182,10 @@ class MainWindow(QMainWindow):
             self.controller.vector_calculator.update_grid_with_adjacent_sum(self.opengl_widget.grid)
             if self.state_manager:
                 self.state_manager.update({"grid_updated": True})
+
+            # Update markers based on the vector field
+            if self.marker_system:
+                self.marker_system.update_markers(self.opengl_widget.grid)
 
         # Update OpenGL widget
         if self.opengl_widget:
