@@ -23,6 +23,8 @@ class ControlPanel(QWidget):
     show_vectors_toggled = pyqtSignal(bool)
     gravity_toggled = pyqtSignal(bool)
     gravity_strength_changed = pyqtSignal(float)
+    friction_toggled = pyqtSignal(bool)
+    friction_strength_changed = pyqtSignal(float)
 
     def __init__(self, config_manager=None, state_manager=None):
         super().__init__()
@@ -237,6 +239,26 @@ class ControlPanel(QWidget):
         gravity_layout.addWidget(self.gravity_strength_value_label)
         layout.addLayout(gravity_layout)
 
+        # Friction checkbox
+        self.friction_checkbox = QCheckBox("Enable Friction")
+        self.friction_checkbox.setChecked(False)
+        self.friction_checkbox.stateChanged.connect(self._on_friction_toggled)
+        layout.addWidget(self.friction_checkbox)
+
+        # Friction strength slider
+        friction_layout = QHBoxLayout()
+        friction_label = QLabel("Friction Strength:")
+        self.friction_strength_slider = QSlider(Qt.Orientation.Horizontal)
+        self.friction_strength_slider.setRange(0, 100)  # 0.0 to 1.0
+        self.friction_strength_slider.setValue(5)  # Default 0.05
+        self.friction_strength_slider.valueChanged.connect(self._on_friction_strength_changed)
+        self.friction_strength_value_label = QLabel("0.05")
+
+        friction_layout.addWidget(friction_label)
+        friction_layout.addWidget(self.friction_strength_slider)
+        friction_layout.addWidget(self.friction_strength_value_label)
+        layout.addLayout(friction_layout)
+
         return group
 
     def _center_view(self):
@@ -299,6 +321,17 @@ class ControlPanel(QWidget):
         strength_value = value / 10.0
         self.gravity_strength_value_label.setText(f"{strength_value:.2f}")
         self.gravity_strength_changed.emit(strength_value)
+
+    def _on_friction_toggled(self, state):
+        """Handle friction checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        self.friction_toggled.emit(enabled)
+
+    def _on_friction_strength_changed(self, value):
+        """Handle friction strength slider change"""
+        strength_value = value / 100.0
+        self.friction_strength_value_label.setText(f"{strength_value:.2f}")
+        self.friction_strength_changed.emit(strength_value)
 
     def update_status_info(self, fps=None, grid_size=None, marker_count=None,
                           camera_pos=None):
