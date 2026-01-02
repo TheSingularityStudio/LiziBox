@@ -15,6 +15,7 @@ class OpenGLWidget(QOpenGLWidget):
 
     # Signals
     marker_selected = pyqtSignal(int)  # marker_id
+    zoom_changed = pyqtSignal(float)  # zoom_value
 
     def __init__(self, renderer=None, state_manager=None, config_manager=None, marker_system=None):
         super().__init__()
@@ -205,6 +206,10 @@ class OpenGLWidget(QOpenGLWidget):
             "cam_zoom": cam_zoom,
             "view_changed": True
         })
+
+        # Emit zoom changed signal to update control panel
+        if hasattr(self, 'zoom_changed') and self.zoom_changed:
+            self.zoom_changed.emit(cam_zoom)
 
         self.update()
 

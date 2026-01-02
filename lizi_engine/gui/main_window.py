@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self.realtime_updates_enabled = True
 
         # Window properties
-        self.setWindowTitle("LiziEngine - PyQt6 GUI")
+        self.setWindowTitle("粒子引擎 - PyQt6 GUI")
         self.setGeometry(100, 100, 1200, 800)
 
         # Initialize UI
@@ -91,22 +91,22 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu('File')
+        file_menu = menubar.addMenu('文件')
 
-        exit_action = QAction('Exit', self)
+        exit_action = QAction('退出', self)
         exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
         # View menu
-        view_menu = menubar.addMenu('View')
+        view_menu = menubar.addMenu('视图')
 
-        reset_view_action = QAction('Reset View', self)
+        reset_view_action = QAction('重置视图', self)
         reset_view_action.setShortcut('R')
         reset_view_action.triggered.connect(self._reset_view)
         view_menu.addAction(reset_view_action)
 
-        toggle_grid_action = QAction('Toggle Grid', self)
+        toggle_grid_action = QAction('切换网格', self)
         toggle_grid_action.setShortcut('G')
         toggle_grid_action.triggered.connect(self._toggle_grid)
         view_menu.addAction(toggle_grid_action)
@@ -148,20 +148,18 @@ class MainWindow(QMainWindow):
         """Connect signals between components"""
         # Connect control panel signals
         if self.control_panel:
-            self.control_panel.view_reset_requested.connect(self._reset_view)
-            self.control_panel.grid_toggle_requested.connect(self._toggle_grid)
-            self.control_panel.grid_clear_requested.connect(self._clear_grid)
-            self.control_panel.tangential_generate_requested.connect(self._generate_tangential)
             self.control_panel.marker_add_requested.connect(self._add_marker)
             self.control_panel.marker_clear_requested.connect(self._clear_markers)
             self.control_panel.zoom_changed.connect(self._handle_zoom_change)
             self.control_panel.vector_scale_changed.connect(self._handle_vector_scale_change)
             self.control_panel.line_width_changed.connect(self._handle_line_width_change)
             self.control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
+            self.control_panel.show_vectors_toggled.connect(self._handle_show_vectors_toggle)
 
         # Connect OpenGL widget signals
         if self.opengl_widget:
             self.opengl_widget.marker_selected.connect(self._handle_marker_selection)
+            self.opengl_widget.zoom_changed.connect(self.control_panel.update_zoom_slider)
 
         # Connect event manager signals
         self.event_manager.grid_updated.connect(self._handle_grid_update)
@@ -212,21 +210,21 @@ class MainWindow(QMainWindow):
             else:
                 fps = getattr(self, '_last_fps', 60)
         self._last_fps = fps
-        self.fps_label.setText(f"FPS: {fps}")
+        self.fps_label.setText(f"帧率: {fps}")
 
         # Grid size
         grid_size = self.config_manager.get("grid_size", 64) if self.config_manager else 64
-        self.grid_size_label.setText(f"Grid: {grid_size}x{grid_size}")
+        self.grid_size_label.setText(f"网格: {grid_size}x{grid_size}")
 
         # Marker count
         marker_count = len(self.marker_system.get_markers()) if self.marker_system else 0
-        self.marker_count_label.setText(f"Markers: {marker_count}")
+        self.marker_count_label.setText(f"标记: {marker_count}")
 
         # Camera info
         cam_x = self.state_manager.get("cam_x", 0.0)
         cam_y = self.state_manager.get("cam_y", 0.0)
         cam_zoom = self.state_manager.get("cam_zoom", 1.0)
-        self.camera_label.setText(f"Camera: ({cam_x:.2f}, {cam_y:.2f}) Zoom: {cam_zoom:.2f}")
+        self.camera_label.setText(f"相机: ({cam_x:.2f}, {cam_y:.2f}) 缩放: {cam_zoom:.2f}")
 
     def _reset_view(self):
         """Reset view to default"""
@@ -278,6 +276,9 @@ class MainWindow(QMainWindow):
                 "cam_zoom": zoom_value,
                 "view_changed": True
             })
+            # Update control panel slider to match
+            if self.control_panel:
+                self.control_panel.update_zoom_slider(zoom_value)
 
     def _handle_vector_scale_change(self, scale_value: float):
         """Handle vector scale change"""
@@ -292,6 +293,11 @@ class MainWindow(QMainWindow):
     def _handle_realtime_toggle(self, enabled: bool):
         """Handle real-time updates toggle"""
         self.realtime_updates_enabled = enabled
+
+    def _handle_show_vectors_toggle(self, enabled: bool):
+        """Handle show vectors toggle"""
+        if self.config_manager:
+            self.config_manager.set("show_vectors", enabled)
 
     def _handle_marker_selection(self, marker_id: int):
         """Handle marker selection"""

@@ -83,6 +83,7 @@ class ConfigManager:
 
         # 渲染配置：是否渲染向量线条（新增）
         self.register_option("render_vector_lines", True, "是否渲染向量线条", type="boolean")
+        self.register_option("show_vectors", True, "是否显示向量", type="boolean")
 
     def register_option(self, key: str, default: Any, description: str = "", 
                        type: str = "string", options: List[Any] = None,

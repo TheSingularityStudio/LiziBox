@@ -14,16 +14,13 @@ class ControlPanel(QWidget):
     """Control panel with all GUI controls"""
 
     # Signals emitted when controls are activated
-    view_reset_requested = pyqtSignal()
-    grid_toggle_requested = pyqtSignal()
-    grid_clear_requested = pyqtSignal()
-    tangential_generate_requested = pyqtSignal()
     marker_add_requested = pyqtSignal()
     marker_clear_requested = pyqtSignal()
     zoom_changed = pyqtSignal(float)
     vector_scale_changed = pyqtSignal(float)
     line_width_changed = pyqtSignal(float)
     realtime_update_toggled = pyqtSignal(bool)
+    show_vectors_toggled = pyqtSignal(bool)
 
     def __init__(self, config_manager=None, state_manager=None):
         super().__init__()
@@ -93,7 +90,7 @@ class ControlPanel(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # Title
-        title_label = QLabel("LiziEngine Control Panel")
+        title_label = QLabel("粒子引擎控制面板")
         title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("color: #4a9eff; margin-bottom: 10px;")
@@ -115,48 +112,24 @@ class ControlPanel(QWidget):
         settings_group = self._create_settings_controls()
         layout.addWidget(settings_group)
 
-        # Status Information
-        status_group = self._create_status_info()
-        layout.addWidget(status_group)
-
         # Add stretch to push everything to the top
         layout.addStretch()
 
     def _create_view_controls(self):
         """Create view control group"""
-        group = QGroupBox("View Controls")
+        group = QGroupBox("视图控制")
         layout = QVBoxLayout(group)
 
-        # Reset View button
-        reset_btn = QPushButton("Reset View (R)")
-        reset_btn.clicked.connect(self.view_reset_requested.emit)
-        layout.addWidget(reset_btn)
-
         # Center View button
-        center_btn = QPushButton("Center View")
+        center_btn = QPushButton("居中视图")
         center_btn.clicked.connect(self._center_view)
         layout.addWidget(center_btn)
-
-        # Toggle Grid button
-        grid_btn = QPushButton("Toggle Grid (G)")
-        grid_btn.clicked.connect(self.grid_toggle_requested.emit)
-        layout.addWidget(grid_btn)
-
-        # Clear Grid button
-        clear_btn = QPushButton("Clear Grid (C)")
-        clear_btn.clicked.connect(self.grid_clear_requested.emit)
-        layout.addWidget(clear_btn)
-
-        # Generate Tangential button
-        tangential_btn = QPushButton("Generate Tangential (Space)")
-        tangential_btn.clicked.connect(self.tangential_generate_requested.emit)
-        layout.addWidget(tangential_btn)
 
         return group
 
     def _create_vector_field_controls(self):
         """Create vector field control group"""
-        group = QGroupBox("Vector Field")
+        group = QGroupBox("矢量场")
         layout = QVBoxLayout(group)
 
         # Zoom control
@@ -205,16 +178,16 @@ class ControlPanel(QWidget):
 
     def _create_marker_controls(self):
         """Create marker control group"""
-        group = QGroupBox("Markers")
+        group = QGroupBox("标记")
         layout = QVBoxLayout(group)
 
         # Add Marker button
-        add_marker_btn = QPushButton("Add Random Marker")
+        add_marker_btn = QPushButton("添加随机标记")
         add_marker_btn.clicked.connect(self.marker_add_requested.emit)
         layout.addWidget(add_marker_btn)
 
         # Clear Markers button
-        clear_markers_btn = QPushButton("Clear All Markers")
+        clear_markers_btn = QPushButton("清空所有标记")
         clear_markers_btn.clicked.connect(self.marker_clear_requested.emit)
         layout.addWidget(clear_markers_btn)
 
@@ -222,7 +195,7 @@ class ControlPanel(QWidget):
 
     def _create_settings_controls(self):
         """Create settings control group"""
-        group = QGroupBox("Settings")
+        group = QGroupBox("设置")
         layout = QVBoxLayout(group)
 
         # Real-time updates checkbox
@@ -231,49 +204,25 @@ class ControlPanel(QWidget):
         self.realtime_checkbox.stateChanged.connect(self._on_realtime_toggled)
         layout.addWidget(self.realtime_checkbox)
 
-        # Show grid checkbox
-        self.show_grid_checkbox = QCheckBox("Show Grid")
-        self.show_grid_checkbox.setChecked(True)
-        layout.addWidget(self.show_grid_checkbox)
-
         # Show vectors checkbox
         self.show_vectors_checkbox = QCheckBox("Show Vectors")
         self.show_vectors_checkbox.setChecked(True)
+        self.show_vectors_checkbox.stateChanged.connect(self._on_show_vectors_toggled)
         layout.addWidget(self.show_vectors_checkbox)
-
-        return group
-
-    def _create_status_info(self):
-        """Create status information group"""
-        group = QGroupBox("Status")
-        layout = QVBoxLayout(group)
-
-        # FPS display
-        self.fps_label = QLabel("FPS: --")
-        layout.addWidget(self.fps_label)
-
-        # Grid size display
-        self.grid_size_label = QLabel("Grid Size: --")
-        layout.addWidget(self.grid_size_label)
-
-        # Marker count display
-        self.marker_count_label = QLabel("Markers: --")
-        layout.addWidget(self.marker_count_label)
-
-        # Camera position display
-        self.camera_pos_label = QLabel("Camera: (--, --)")
-        layout.addWidget(self.camera_pos_label)
 
         return group
 
     def _center_view(self):
         """Center the view on the grid"""
-        if self.state_manager:
-            # This would need grid information to center properly
-            # For now, just reset to origin
+        if self.state_manager and self.config_manager:
+            # Get grid size to calculate center
+            grid_size = self.config_manager.get("grid_size", 64)
+            grid_center_x = grid_size / 2.0
+            grid_center_y = grid_size / 2.0
+
             self.state_manager.update({
-                "cam_x": 0.0,
-                "cam_y": 0.0,
+                "cam_x": grid_center_x,
+                "cam_y": grid_center_y,
                 "view_changed": True
             })
 
@@ -282,6 +231,14 @@ class ControlPanel(QWidget):
         zoom_value = value / 100.0
         self.zoom_value_label.setText(f"{zoom_value:.2f}")
         self.zoom_changed.emit(zoom_value)
+
+    def update_zoom_slider(self, zoom_value: float):
+        """Update zoom slider to match current zoom value"""
+        slider_value = int(zoom_value * 100.0)
+        self.zoom_slider.blockSignals(True)  # Prevent recursive signal emission
+        self.zoom_slider.setValue(slider_value)
+        self.zoom_value_label.setText(f"{zoom_value:.2f}")
+        self.zoom_slider.blockSignals(False)
 
     def _on_vector_scale_changed(self, value):
         """Handle vector scale slider change"""
@@ -300,17 +257,22 @@ class ControlPanel(QWidget):
         enabled = state == Qt.CheckState.Checked.value
         self.realtime_update_toggled.emit(enabled)
 
+    def _on_show_vectors_toggled(self, state):
+        """Handle show vectors checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        self.show_vectors_toggled.emit(enabled)
+
     def update_status_info(self, fps=None, grid_size=None, marker_count=None,
                           camera_pos=None):
         """Update status information displays"""
         if fps is not None:
-            self.fps_label.setText(f"FPS: {fps}")
+            self.fps_label.setText(f"帧率: {fps}")
 
         if grid_size is not None:
-            self.grid_size_label.setText(f"Grid Size: {grid_size}x{grid_size}")
+            self.grid_size_label.setText(f"网格尺寸: {grid_size}x{grid_size}")
 
         if marker_count is not None:
-            self.marker_count_label.setText(f"Markers: {marker_count}")
+            self.marker_count_label.setText(f"标记: {marker_count}")
 
         if camera_pos is not None:
             cam_x, cam_y = camera_pos
@@ -320,6 +282,5 @@ class ControlPanel(QWidget):
         """Get current settings"""
         return {
             'realtime_updates': self.realtime_checkbox.isChecked(),
-            'show_grid': self.show_grid_checkbox.isChecked(),
             'show_vectors': self.show_vectors_checkbox.isChecked()
         }
