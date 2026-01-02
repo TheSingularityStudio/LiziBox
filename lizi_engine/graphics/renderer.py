@@ -404,8 +404,14 @@ class VectorFieldRenderer(EventHandler):
         # 点大小
         glPointSize(point_size)
 
+        # 禁用深度测试，确保标记始终在最上层
+        glDisable(GL_DEPTH_TEST)
+
         # 绘制点
         glDrawArrays(GL_POINTS, 0, len(markers))
+
+        # 重新启用深度测试
+        glEnable(GL_DEPTH_TEST)
 
         # 清理绑定
         glBindVertexArray(0)
