@@ -17,7 +17,7 @@ class OpenGLWidget(QOpenGLWidget):
     marker_selected = pyqtSignal(int)  # marker_id
     zoom_changed = pyqtSignal(float)  # zoom_value
 
-    def __init__(self, renderer=None, state_manager=None, config_manager=None, marker_system=None):
+    def __init__(self, renderer=None, state_manager=None, config_manager=None, marker_system=None, controller=None):
         super().__init__()
 
         # Core system references
@@ -25,6 +25,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.state_manager = state_manager
         self.config_manager = config_manager
         self.marker_system = marker_system
+        self.controller = controller
 
         # Rendering data
         self.grid = None
@@ -232,18 +233,29 @@ class OpenGLWidget(QOpenGLWidget):
 
     def _handle_left_mouse_press(self, pos: QPoint):
         """Handle left mouse button press"""
-        # Convert screen coordinates to world coordinates
-        world_pos = self._screen_to_world(pos)
+        if not self.controller:
+            return
 
-        if world_pos:
-            world_x, world_y = world_pos
+        # Check mouse mode from state manager
+        mouse_mode = self.state_manager.get("mouse_mode", "drag") if self.state_manager else "drag"
 
-            # Try to select a marker (this would need marker system integration)
-            # For now, just emit a generic marker selected signal
-            # In full implementation, this would check marker positions
+        if mouse_mode == "place":
+            # Place a new marker at the click position
+            world_pos = self._screen_to_world(pos)
+            if world_pos:
+                world_x, world_y = world_pos
+                # Convert world coordinates to grid coordinates
+                cell_size = self.config_manager.get("cell_size", 1.0) if self.config_manager else 1.0
+                gx = world_x / cell_size
+                gy = world_y / cell_size
+                if self.marker_system:
+                    self.marker_system.add_marker(gx, gy)
+                self.selected_marker = None  # No marker selected for dragging
+        else:  # drag mode (default)
+            # Select marker for dragging using controller
+            self.selected_marker = self.controller.handle_mouse_left_press(pos.x(), pos.y())
 
-            self.mouse_dragging = True
-            # self.marker_selected.emit(marker_id)  # Would emit actual marker ID
+        self.mouse_dragging = True
 
     def _handle_middle_mouse_press(self, pos: QPoint):
         """Handle middle mouse button press for panning"""
@@ -285,15 +297,11 @@ class OpenGLWidget(QOpenGLWidget):
 
     def _handle_mouse_drag(self, pos: QPoint):
         """Handle mouse drag for marker movement"""
-        if self.selected_marker is None or not self.marker_system:
+        if self.selected_marker is None or not self.controller:
             return
 
-        # Convert to world coordinates and update marker position
-        world_pos = self._screen_to_world(pos)
-        if world_pos:
-            world_x, world_y = world_pos
-            # Update marker position through marker system
-            self._update_marker_position(self.selected_marker, world_x, world_y)
+        # Use controller to handle mouse drag
+        self.controller.handle_mouse_drag(pos.x(), pos.y(), self.selected_marker)
 
     def _screen_to_world(self, screen_pos: QPoint):
         """Convert screen coordinates to world coordinates"""
@@ -308,13 +316,9 @@ class OpenGLWidget(QOpenGLWidget):
         viewport_width = self.width()
         viewport_height = self.height()
 
-        # Convert screen to normalized device coordinates (-1 to 1)
-        ndc_x = (2.0 * screen_pos.x() / viewport_width) - 1.0
-        ndc_y = 1.0 - (2.0 * screen_pos.y() / viewport_height)
-
-        # Convert to world coordinates
-        world_x = cam_x + (ndc_x * viewport_width / (2.0 * cam_zoom))
-        world_y = cam_y + (ndc_y * viewport_height / (2.0 * cam_zoom))
+        # Convert screen coordinates to world coordinates (same as controller.py)
+        world_x = cam_x + (screen_pos.x() - (viewport_width / 2.0)) / cam_zoom
+        world_y = cam_y + (screen_pos.y() - (viewport_height / 2.0)) / cam_zoom
 
         return world_x, world_y
 

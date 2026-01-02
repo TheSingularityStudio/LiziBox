@@ -9,10 +9,10 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QSplitter, QFrame, QLabel, QPushButton, QSlider, QGroupBox,
-    QGridLayout, QStatusBar, QMenuBar, QMenu
+    QGridLayout, QStatusBar, QMenuBar, QMenu, QToolBar
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtGui import QAction, QKeySequence, QActionGroup
 
 from .opengl_widget import OpenGLWidget
 from .control_panel import ControlPanel
@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
 
         # Initialize UI
         self._setup_ui()
+        self._setup_toolbar()
         self._setup_menus()
         self._setup_status_bar()
         self._connect_signals()
@@ -77,7 +78,8 @@ class MainWindow(QMainWindow):
             self.renderer,
             self.state_manager,
             self.config_manager,
-            self.marker_system
+            self.marker_system,
+            self.controller
         )
         splitter.addWidget(self.opengl_widget)
 
@@ -85,6 +87,44 @@ class MainWindow(QMainWindow):
         splitter.setSizes([300, 900])
 
         main_layout.addWidget(splitter)
+
+    def _setup_toolbar(self):
+        """Set up the toolbar for mouse mode control"""
+        # Create toolbar
+        self.toolbar = self.addToolBar("Mouse Mode")
+
+        # Create action group for exclusive selection
+        self.mouse_mode_group = QActionGroup(self)
+        self.mouse_mode_group.setExclusive(True)
+
+        # Drag Marker action
+        self.drag_marker_action = QAction("拖动标记", self)
+        self.drag_marker_action.setCheckable(True)
+        self.drag_marker_action.setChecked(True)  # Default mode
+        self.drag_marker_action.triggered.connect(self._set_drag_marker_mode)
+        self.mouse_mode_group.addAction(self.drag_marker_action)
+        self.toolbar.addAction(self.drag_marker_action)
+
+        # Place Marker action
+        self.place_marker_action = QAction("放置标记", self)
+        self.place_marker_action.setCheckable(True)
+        self.place_marker_action.triggered.connect(self._set_place_marker_mode)
+        self.mouse_mode_group.addAction(self.place_marker_action)
+        self.toolbar.addAction(self.place_marker_action)
+
+        # Initialize default mode in state manager
+        if self.state_manager:
+            self.state_manager.update({"mouse_mode": "drag"})
+
+    def _set_drag_marker_mode(self):
+        """Set mouse mode to drag marker"""
+        if self.state_manager:
+            self.state_manager.update({"mouse_mode": "drag"})
+
+    def _set_place_marker_mode(self):
+        """Set mouse mode to place marker"""
+        if self.state_manager:
+            self.state_manager.update({"mouse_mode": "place"})
 
     def _setup_menus(self):
         """Set up menu bar"""
