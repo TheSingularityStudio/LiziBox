@@ -100,7 +100,17 @@ class UIManager:
                 self._mouse_left_pressed = True
 
                 mx, my = input_handler.get_mouse_position()
-                self._selected_marker = self.controller.handle_mouse_left_press(mx, my)
+
+                # Check mouse mode from state manager
+                mouse_mode = self.app_core.state_manager.get("mouse_mode", "drag")
+
+                if mouse_mode == "place":
+                    # Place a new marker at the click position
+                    self.marker_system.add_marker(mx, my)
+                    self._selected_marker = None  # No marker selected for dragging
+                else:  # drag mode (default)
+                    # Select marker for dragging
+                    self._selected_marker = self.controller.handle_mouse_left_press(mx, my)
             except Exception as e:
                 print(f"[错误] 处理鼠标左键按下时发生异常: {e}")
 
