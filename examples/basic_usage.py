@@ -12,7 +12,8 @@ from lizi_engine.core.container import container
 from lizi_engine.core.app import AppCore, GUI_AVAILABLE
 from lizi_engine.core.state import state_manager
 from lizi_engine.compute.vector_field import vector_calculator
-from lizi_engine.core.plugin import UIManager, Controller, MarkerSystem, add_inward_edge_vectors
+from lizi_engine.compute.marker_system import MarkerSystem
+from lizi_engine.core.plugin import UIManager, Controller, add_inward_edge_vectors
 from PyQt6.QtCore import QTimer
 
 def main():

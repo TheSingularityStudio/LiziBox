@@ -4,7 +4,7 @@
 """
 import sys
 from typing import Optional
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMenuBar, QStatusBar, QLabel
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMenuBar, QStatusBar, QLabel, QSplitter
 from PyQt6.QtCore import Qt, QTimer, QPointF
 from PyQt6.QtGui import QAction, QKeySequence, QMouseEvent, QWheelEvent, QKeyEvent, QCursor
 
@@ -12,12 +12,13 @@ from ..core.events import Event, EventType, event_bus
 from ..core.state import state_manager
 from ..input import input_handler
 from ..graphics.opengl_widget import OpenGLWidget
+from ..gui.control_panel import ControlPanel
 
 
 class MainWindow(QMainWindow):
     """主窗口类"""
 
-    def __init__(self, app_core, title: str = "LiziEngine", width: int = 800, height: int = 600):
+    def __init__(self, app_core, title: str = "LiziEngine", width: int = 1200, height: int = 800):
         super().__init__()
 
         self._app_core = app_core
@@ -27,6 +28,9 @@ class MainWindow(QMainWindow):
 
         # OpenGL 渲染器
         self._opengl_widget = None
+
+        # Control Panel
+        self._control_panel = None
 
         # 定时器用于渲染循环
         self._render_timer = None
@@ -47,17 +51,32 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # 创建布局
-        layout = QVBoxLayout(central_widget)
+        layout = QHBoxLayout(central_widget)
+
+        # 创建分割器
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # 创建控制面板
+        self._control_panel = ControlPanel(self._app_core.config_manager, self._app_core.state_manager)
+        splitter.addWidget(self._control_panel)
 
         # 创建OpenGL渲染器
         self._opengl_widget = OpenGLWidget(self._app_core)
-        layout.addWidget(self._opengl_widget)
+        splitter.addWidget(self._opengl_widget)
+
+        # 设置分割器比例
+        splitter.setSizes([300, 900])
+
+        layout.addWidget(splitter)
 
         # 创建菜单栏
         self._create_menu_bar()
 
         # 创建状态栏
         self._create_status_bar()
+
+        # 连接控制面板信号
+        self._connect_control_panel_signals()
 
         # 设置渲染定时器
         self._render_timer = QTimer(self)
@@ -112,6 +131,20 @@ class MainWindow(QMainWindow):
         self.grid_size_label = QLabel("网格: 0x0")
         self.status_bar.addWidget(self.grid_size_label)
 
+    def _connect_control_panel_signals(self) -> None:
+        """连接控制面板信号"""
+        if self._control_panel:
+            self._control_panel.view_reset_requested.connect(self._reset_view)
+            self._control_panel.grid_toggle_requested.connect(self._toggle_grid)
+            self._control_panel.grid_clear_requested.connect(self._clear_grid)
+            self._control_panel.tangential_generate_requested.connect(self._generate_tangential)
+            self._control_panel.marker_add_requested.connect(self._add_marker)
+            self._control_panel.marker_clear_requested.connect(self._clear_markers)
+            self._control_panel.zoom_changed.connect(self._handle_zoom_change)
+            self._control_panel.vector_scale_changed.connect(self._handle_vector_scale_change)
+            self._control_panel.line_width_changed.connect(self._handle_line_width_change)
+            self._control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
+
     def _render_frame(self) -> None:
         """渲染一帧"""
         if self._opengl_widget:
@@ -123,13 +156,25 @@ class MainWindow(QMainWindow):
     def _update_status_bar(self) -> None:
         """更新状态栏信息"""
         # FPS (这里简化处理，实际应该计算真实FPS)
-        fps = state_manager.get("target_fps", 60)
+        fps = state_manager.get("current_fps", state_manager.get("target_fps", 60))
         self.fps_label.setText(f"FPS: {fps}")
 
         # 网格大小
         width = state_manager.get("grid_width", 0)
         height = state_manager.get("grid_height", 0)
         self.grid_size_label.setText(f"网格: {width}x{height}")
+
+        # Update control panel status info
+        if self._control_panel:
+            marker_count = len(self._app_core.marker_system.get_markers()) if self._app_core.marker_system else 0
+            cam_x = state_manager.get("cam_x", 0.0)
+            cam_y = state_manager.get("cam_y", 0.0)
+            self._control_panel.update_status_info(
+                fps=fps,
+                grid_size=(width, height),
+                marker_count=marker_count,
+                camera_pos=(cam_x, cam_y)
+            )
 
     def _reset_view(self) -> None:
         """重置视图"""
@@ -154,6 +199,52 @@ class MainWindow(QMainWindow):
             {},
             "MainWindow"
         ))
+
+    def _generate_tangential(self) -> None:
+        """生成切线模式"""
+        event_bus.publish(Event(
+            EventType.SPACE_PRESSED,
+            {},
+            "MainWindow"
+        ))
+
+    def _add_marker(self) -> None:
+        """添加标记"""
+        if self._app_core.marker_system:
+            import random
+            # Get grid dimensions
+            grid_width = self._app_core.state_manager.get("grid_width", 640)
+            grid_height = self._app_core.state_manager.get("grid_height", 480)
+
+            # Add random marker
+            x = random.uniform(0, grid_width - 1)
+            y = random.uniform(0, grid_height - 1)
+            self._app_core.marker_system.add_marker(x, y)
+
+    def _clear_markers(self) -> None:
+        """清空标记"""
+        if self._app_core.marker_system:
+            self._app_core.marker_system.clear_markers()
+
+    def _handle_zoom_change(self, zoom_value: float) -> None:
+        """处理缩放变化"""
+        if self._app_core.state_manager:
+            self._app_core.state_manager.set("cam_zoom", zoom_value)
+
+    def _handle_vector_scale_change(self, scale_value: float) -> None:
+        """处理向量缩放变化"""
+        if self._app_core.config_manager:
+            self._app_core.config_manager.set("vector_scale", scale_value)
+
+    def _handle_line_width_change(self, width_value: float) -> None:
+        """处理线宽变化"""
+        if self._app_core.config_manager:
+            self._app_core.config_manager.set("line_width", width_value)
+
+    def _handle_realtime_toggle(self, enabled: bool) -> None:
+        """处理实时更新切换"""
+        if self._app_core.state_manager:
+            self._app_core.state_manager.set("enable_update", enabled)
 
     def handle(self, event: Event) -> None:
         """处理事件"""

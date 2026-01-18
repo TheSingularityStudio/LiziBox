@@ -14,6 +14,7 @@ from .container import container
 from ..compute.vector_field import VectorFieldCalculator
 from ..graphics.renderer import VectorFieldRenderer
 from ..window.main_window import MainWindow
+from ..compute.marker_system import MarkerSystem
 
 # 检查GUI可用性
 try:
@@ -292,6 +293,7 @@ class AppCore:
         self._grid_manager = GridManager(self._state_manager, self._event_bus)
         self._view_manager = ViewManager(self._state_manager, self._event_bus)
         self._fps_limiter = FPSLimiter(self._state_manager, self._event_bus, self._config_manager)
+        self._marker_system = MarkerSystem(self)
 
         # 从容器获取服务
         self._vector_calculator = container.resolve(VectorFieldCalculator)
@@ -356,6 +358,11 @@ class AppCore:
     def renderer(self) -> VectorFieldRenderer:
         """获取渲染器"""
         return self._renderer
+
+    @property
+    def marker_system(self) -> 'MarkerSystem':
+        """获取标记系统"""
+        return self._marker_system
 
     @property
     def main_window(self) -> Optional['MainWindow']:

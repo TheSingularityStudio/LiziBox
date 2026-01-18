@@ -93,7 +93,7 @@ class ControlPanel(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # Title
-        title_label = QLabel("LiziEngine Control Panel")
+        title_label = QLabel("LiziEngine 控制面板")
         title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("color: #4a9eff; margin-bottom: 10px;")
@@ -124,31 +124,31 @@ class ControlPanel(QWidget):
 
     def _create_view_controls(self):
         """Create view control group"""
-        group = QGroupBox("View Controls")
+        group = QGroupBox("视图控制")
         layout = QVBoxLayout(group)
 
         # Reset View button
-        reset_btn = QPushButton("Reset View (R)")
+        reset_btn = QPushButton("重置视图 (R)")
         reset_btn.clicked.connect(self.view_reset_requested.emit)
         layout.addWidget(reset_btn)
 
         # Center View button
-        center_btn = QPushButton("Center View")
+        center_btn = QPushButton("居中视图")
         center_btn.clicked.connect(self._center_view)
         layout.addWidget(center_btn)
 
         # Toggle Grid button
-        grid_btn = QPushButton("Toggle Grid (G)")
+        grid_btn = QPushButton("切换网格 (G)")
         grid_btn.clicked.connect(self.grid_toggle_requested.emit)
         layout.addWidget(grid_btn)
 
         # Clear Grid button
-        clear_btn = QPushButton("Clear Grid (C)")
+        clear_btn = QPushButton("清空网格 (C)")
         clear_btn.clicked.connect(self.grid_clear_requested.emit)
         layout.addWidget(clear_btn)
 
         # Generate Tangential button
-        tangential_btn = QPushButton("Generate Tangential (Space)")
+        tangential_btn = QPushButton("生成切线模式 (空格键)")
         tangential_btn.clicked.connect(self.tangential_generate_requested.emit)
         layout.addWidget(tangential_btn)
 
@@ -156,12 +156,12 @@ class ControlPanel(QWidget):
 
     def _create_vector_field_controls(self):
         """Create vector field control group"""
-        group = QGroupBox("Vector Field")
+        group = QGroupBox("向量场控制")
         layout = QVBoxLayout(group)
 
         # Zoom control
         zoom_layout = QHBoxLayout()
-        zoom_label = QLabel("Zoom:")
+        zoom_label = QLabel("缩放:")
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
         self.zoom_slider.setRange(10, 1000)  # 0.1 to 10.0
         self.zoom_slider.setValue(100)  # Default 1.0
@@ -175,7 +175,7 @@ class ControlPanel(QWidget):
 
         # Vector Scale control
         scale_layout = QHBoxLayout()
-        scale_label = QLabel("Vector Scale:")
+        scale_label = QLabel("向量缩放:")
         self.vector_scale_slider = QSlider(Qt.Orientation.Horizontal)
         self.vector_scale_slider.setRange(10, 500)  # 0.1 to 5.0
         self.vector_scale_slider.setValue(100)  # Default 1.0
@@ -189,7 +189,7 @@ class ControlPanel(QWidget):
 
         # Line Width control
         width_layout = QHBoxLayout()
-        width_label = QLabel("Line Width:")
+        width_label = QLabel("线宽:")
         self.line_width_slider = QSlider(Qt.Orientation.Horizontal)
         self.line_width_slider.setRange(5, 30)  # 0.5 to 3.0
         self.line_width_slider.setValue(10)  # Default 1.0
@@ -205,16 +205,16 @@ class ControlPanel(QWidget):
 
     def _create_marker_controls(self):
         """Create marker control group"""
-        group = QGroupBox("Markers")
+        group = QGroupBox("标记控制")
         layout = QVBoxLayout(group)
 
         # Add Marker button
-        add_marker_btn = QPushButton("Add Random Marker")
+        add_marker_btn = QPushButton("添加随机标记")
         add_marker_btn.clicked.connect(self.marker_add_requested.emit)
         layout.addWidget(add_marker_btn)
 
         # Clear Markers button
-        clear_markers_btn = QPushButton("Clear All Markers")
+        clear_markers_btn = QPushButton("清空所有标记")
         clear_markers_btn.clicked.connect(self.marker_clear_requested.emit)
         layout.addWidget(clear_markers_btn)
 
@@ -222,30 +222,32 @@ class ControlPanel(QWidget):
 
     def _create_settings_controls(self):
         """Create settings control group"""
-        group = QGroupBox("Settings")
+        group = QGroupBox("设置")
         layout = QVBoxLayout(group)
 
         # Real-time updates checkbox
-        self.realtime_checkbox = QCheckBox("Real-time Updates")
+        self.realtime_checkbox = QCheckBox("实时更新")
         self.realtime_checkbox.setChecked(True)
         self.realtime_checkbox.stateChanged.connect(self._on_realtime_toggled)
         layout.addWidget(self.realtime_checkbox)
 
         # Show grid checkbox
-        self.show_grid_checkbox = QCheckBox("Show Grid")
+        self.show_grid_checkbox = QCheckBox("显示网格")
         self.show_grid_checkbox.setChecked(True)
+        self.show_grid_checkbox.stateChanged.connect(self._on_show_grid_toggled)
         layout.addWidget(self.show_grid_checkbox)
 
         # Show vectors checkbox
-        self.show_vectors_checkbox = QCheckBox("Show Vectors")
+        self.show_vectors_checkbox = QCheckBox("显示向量")
         self.show_vectors_checkbox.setChecked(True)
+        self.show_vectors_checkbox.stateChanged.connect(self._on_show_vectors_toggled)
         layout.addWidget(self.show_vectors_checkbox)
 
         return group
 
     def _create_status_info(self):
         """Create status information group"""
-        group = QGroupBox("Status")
+        group = QGroupBox("状态信息")
         layout = QVBoxLayout(group)
 
         # FPS display
@@ -253,15 +255,15 @@ class ControlPanel(QWidget):
         layout.addWidget(self.fps_label)
 
         # Grid size display
-        self.grid_size_label = QLabel("Grid Size: --")
+        self.grid_size_label = QLabel("网格尺寸: --")
         layout.addWidget(self.grid_size_label)
 
         # Marker count display
-        self.marker_count_label = QLabel("Markers: --")
+        self.marker_count_label = QLabel("标记数量: --")
         layout.addWidget(self.marker_count_label)
 
         # Camera position display
-        self.camera_pos_label = QLabel("Camera: (--, --)")
+        self.camera_pos_label = QLabel("相机位置: (--, --)")
         layout.addWidget(self.camera_pos_label)
 
         return group
@@ -300,6 +302,18 @@ class ControlPanel(QWidget):
         enabled = state == Qt.CheckState.Checked.value
         self.realtime_update_toggled.emit(enabled)
 
+    def _on_show_grid_toggled(self, state):
+        """Handle show grid checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        if self.state_manager:
+            self.state_manager.set("show_grid", enabled)
+
+    def _on_show_vectors_toggled(self, state):
+        """Handle show vectors checkbox toggle"""
+        enabled = state == Qt.CheckState.Checked.value
+        if self.state_manager:
+            self.state_manager.set("show_vectors", enabled)
+
     def update_status_info(self, fps=None, grid_size=None, marker_count=None,
                           camera_pos=None):
         """Update status information displays"""
@@ -307,10 +321,10 @@ class ControlPanel(QWidget):
             self.fps_label.setText(f"FPS: {fps}")
 
         if grid_size is not None:
-            self.grid_size_label.setText(f"Grid Size: {grid_size}x{grid_size}")
+            self.grid_size_label.setText(f"网格尺寸: {grid_size}x{grid_size}")
 
         if marker_count is not None:
-            self.marker_count_label.setText(f"Markers: {marker_count}")
+            self.marker_count_label.setText(f"标记数量: {marker_count}")
 
         if camera_pos is not None:
             cam_x, cam_y = camera_pos
