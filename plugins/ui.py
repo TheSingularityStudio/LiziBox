@@ -27,6 +27,8 @@ class UIManager:
 
         # 左键按下时选择的标记
         self._selected_marker = None
+        # 弹簧连接模式下选择的标记列表
+        self._spring_selected_markers = []
 
     def register_callbacks(self, grid: np.ndarray, on_space=None, on_r=None, on_g=None, on_c=None, on_u=None, on_v=None, on_f=None):
         self._grid = grid
@@ -78,6 +80,17 @@ class UIManager:
                 if mouse_mode == "place_marker":
                     # 放置标记模式
                     self.controller.place_vector_field(mx, my)
+                elif mouse_mode == "spring_connect":
+                    # 弹簧连接模式
+                    selected_marker = self.controller.handle_mouse_left_press(mx, my)
+                    if selected_marker:
+                        self._spring_selected_markers.append(selected_marker["id"])
+                        print(f"Selected marker {selected_marker['id']} for spring connection")
+                        if len(self._spring_selected_markers) == 2:
+                            # 连接两个标记
+                            id1, id2 = self._spring_selected_markers
+                            self.marker_system.connect_spring(id1, id2)
+                            self._spring_selected_markers = []  # 重置选择
                 else:
                     # 拖动模式（默认）
                     self._selected_marker = self.controller.handle_mouse_left_press(mx, my)

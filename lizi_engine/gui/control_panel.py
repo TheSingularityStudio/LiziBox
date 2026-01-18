@@ -123,6 +123,11 @@ class ControlPanel(QWidget):
         self._mouse_mode_button_group.addButton(self._place_marker_radio_button, 1)
         mouse_mode_layout.addWidget(self._place_marker_radio_button)
 
+        self._spring_connect_radio_button = QRadioButton("弹簧连接")
+        self._spring_connect_radio_button.setToolTip("左键选择标记进行弹簧连接")
+        self._mouse_mode_button_group.addButton(self._spring_connect_radio_button, 2)
+        mouse_mode_layout.addWidget(self._spring_connect_radio_button)
+
         layout.addWidget(mouse_mode_group)
 
         # 渲染参数组
@@ -283,6 +288,8 @@ class ControlPanel(QWidget):
             self.mouse_mode_changed.emit("drag")
         elif button == self._place_marker_radio_button:
             self.mouse_mode_changed.emit("place_marker")
+        elif button == self._spring_connect_radio_button:
+            self.mouse_mode_changed.emit("spring_connect")
 
     def update_status_info(self, fps: int, grid_size: tuple, marker_count: int, camera_pos: tuple) -> None:
         """更新状态信息"""

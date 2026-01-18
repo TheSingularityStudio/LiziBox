@@ -13,8 +13,11 @@ class MarkerSystem:
     def __init__(self, app_core):
         self.app_core = app_core
         self.vector_calculator = vector_calculator
-        # 标记列表，存储浮点网格坐标 {'x':float,'y':float,'mag':float,'vx':float,'vy':float}
+        # 标记列表，存储浮点网格坐标 {'id':int, 'x':float,'y':float,'mag':float,'vx':float,'vy':float}
         self.markers = []
+        self.marker_id_counter = 0
+        # 弹簧连接列表 [{'id1':int, 'id2':int, 'rest_length':float, 'strength':float}]
+        self.springs = []
 
     def add_marker(self, x: float, y: float, mag: float = 1.0, vx: float = 0.0, vy: float = 0.0) -> None:
         """添加一个新标记
@@ -26,14 +29,48 @@ class MarkerSystem:
             vx: 标记的x方向速度（可选）
             vy: 标记的y方向速度（可选）
         """
-        marker = {"x": float(x), "y": float(y), "mag": float(mag), "vx": float(vx), "vy": float(vy)}
+        marker = {"id": self.marker_id_counter, "x": float(x), "y": float(y), "mag": float(mag), "vx": float(vx), "vy": float(vy)}
         self.markers.append(marker)
+        self.marker_id_counter += 1
         self._sync_to_state_manager()
 
     def clear_markers(self) -> None:
         """清除所有标记"""
         self.markers = []
+        self.springs = []
         self._sync_to_state_manager()
+
+    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 1.0) -> None:
+        """连接两个标记为弹簧
+
+        Args:
+            id1: 第一个标记的ID
+            id2: 第二个标记的ID
+            rest_length: 弹簧的自然长度（可选，默认使用当前距离）
+            strength: 弹簧强度（可选，默认1.0）
+        """
+        # 检查标记是否存在
+        marker1 = next((m for m in self.markers if m["id"] == id1), None)
+        marker2 = next((m for m in self.markers if m["id"] == id2), None)
+        if marker1 is None or marker2 is None:
+            print(f"Error: Marker with id {id1} or {id2} not found")
+            return
+
+        # 如果未提供rest_length，使用当前距离
+        if rest_length is None:
+            dx = marker1["x"] - marker2["x"]
+            dy = marker1["y"] - marker2["y"]
+            rest_length = (dx**2 + dy**2)**0.5
+
+        # 检查是否已存在连接
+        existing = next((s for s in self.springs if (s["id1"] == id1 and s["id2"] == id2) or (s["id1"] == id2 and s["id2"] == id1)), None)
+        if existing:
+            print(f"Spring connection between {id1} and {id2} already exists")
+            return
+
+        spring = {"id1": id1, "id2": id2, "rest_length": rest_length, "strength": strength}
+        self.springs.append(spring)
+        print(f"Spring connected between marker {id1} and {id2}")
 
     def get_markers(self) -> List[Dict[str, float]]:
         """获取所有标记
@@ -89,6 +126,9 @@ class MarkerSystem:
                     vx += fitted_vx * 1/mag
                     vy += fitted_vy * 1/mag
 
+                # 应用弹簧向量到网格
+                self._apply_spring_vectors_to_grid(grid, m["id"], x, y)
+
                 # 限制速度不超过单元格大小
                 if (vx ** 2 + vy ** 2) ** 0.5 > cell_size:  # 限制速度不超过单元格大小
                     vx = vx / (vx ** 2 + vy ** 2) ** 0.5 * cell_size
@@ -140,6 +180,45 @@ class MarkerSystem:
 
         # 将更新后的网格设置回GridManager，确保及时通知渲染器
         self.app_core.grid_manager.set_grid(grid)
+
+    def _apply_spring_vectors_to_grid(self, grid: np.ndarray, marker_id: int, x: float, y: float) -> None:
+        """在标记位置添加弹簧向量到网格"""
+        for spring in self.springs:
+            if spring["id1"] == marker_id or spring["id2"] == marker_id:
+                # 找到另一个标记
+                other_id = spring["id2"] if spring["id1"] == marker_id else spring["id1"]
+                other_marker = next((m for m in self.markers if m["id"] == other_id), None)
+                if other_marker is None:
+                    continue
+
+                # 计算距离和方向
+                dx = other_marker["x"] - x
+                dy = other_marker["y"] - y
+                distance = (dx**2 + dy**2)**0.5
+
+                if distance == 0:
+                    continue  # 避免除零
+
+                # 归一化方向向量
+                nx = dx / distance
+                ny = dy / distance
+
+                # 计算向量大小
+                rest_length = spring["rest_length"]
+                strength = spring["strength"]
+
+                if distance < rest_length:
+                    # 距离太近，在两个标记位置分别添加方向向外的向量
+                    # 在当前标记位置添加向外的向量
+                    self.add_vector_at_position(grid, x, y, -nx * strength, -ny * strength)
+                    # 在另一个标记位置添加向外的向量
+                    self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], nx * strength, ny * strength)
+                else:
+                    # 距离太远，在两个标记位置分别添加方向向内的向量
+                    # 在当前标记位置添加向内的向量
+                    self.add_vector_at_position(grid, x, y, nx * strength, ny * strength)
+                    # 在另一个标记位置添加向内的向量
+                    self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], -nx * strength, -ny * strength)
 
     def _sync_to_state_manager(self) -> None:
         """将标记列表同步到状态管理器"""
