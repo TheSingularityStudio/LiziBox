@@ -53,6 +53,12 @@ class ControlPanel(QWidget):
         # 连接信号
         self._connect_signals()
 
+        # 添加状态监听器
+        self._setup_state_listeners()
+
+        # 初始化状态显示
+        self._init_status_display()
+
     def _init_ui(self) -> None:
         """初始化用户界面"""
         layout = QVBoxLayout(self)
@@ -176,9 +182,81 @@ class ControlPanel(QWidget):
         self._line_width_slider.valueChanged.connect(lambda v: self.line_width_changed.emit(v / 10.0))
         self._realtime_update_checkbox.toggled.connect(self.realtime_update_toggled.emit)
 
+    def _setup_state_listeners(self) -> None:
+        """设置状态变更监听器"""
+        # 监听FPS变化
+        self._state_manager.add_listener("current_fps", self._on_fps_changed)
+
+        # 监听网格大小变化
+        self._state_manager.add_listener("grid_width", self._on_grid_size_changed)
+        self._state_manager.add_listener("grid_height", self._on_grid_size_changed)
+
+        # 监听相机位置变化
+        self._state_manager.add_listener("cam_x", self._on_camera_pos_changed)
+        self._state_manager.add_listener("cam_y", self._on_camera_pos_changed)
+
+        # 监听标记变化（通过markers键）
+        self._state_manager.add_listener("markers", self._on_markers_changed)
+
+    def _on_fps_changed(self, key: str, old_value: int, new_value: int) -> None:
+        """FPS变化回调"""
+        if self._fps_label:
+            self._fps_label.setText(f"FPS: {new_value}")
+
+    def _on_grid_size_changed(self, key: str, old_value: int, new_value: int) -> None:
+        """网格大小变化回调"""
+        if self._grid_size_label:
+            width = self._state_manager.get("grid_width", 0)
+            height = self._state_manager.get("grid_height", 0)
+            self._grid_size_label.setText(f"网格: {width}x{height}")
+
+    def _on_camera_pos_changed(self, key: str, old_value: float, new_value: float) -> None:
+        """相机位置变化回调"""
+        if self._camera_pos_label:
+            cam_x = self._state_manager.get("cam_x", 0.0)
+            cam_y = self._state_manager.get("cam_y", 0.0)
+            self._camera_pos_label.setText(f"相机: ({cam_x:.1f}, {cam_y:.1f})")
+
+    def _init_status_display(self) -> None:
+        """初始化状态显示"""
+        # 初始化FPS显示
+        current_fps = self._state_manager.get("current_fps", 60)
+        if self._fps_label:
+            self._fps_label.setText(f"FPS: {current_fps}")
+
+        # 初始化网格大小显示
+        width = self._state_manager.get("grid_width", 0)
+        height = self._state_manager.get("grid_height", 0)
+        if self._grid_size_label:
+            self._grid_size_label.setText(f"网格: {width}x{height}")
+
+        # 初始化相机位置显示
+        cam_x = self._state_manager.get("cam_x", 0.0)
+        cam_y = self._state_manager.get("cam_y", 0.0)
+        if self._camera_pos_label:
+            self._camera_pos_label.setText(f"相机: ({cam_x:.1f}, {cam_y:.1f})")
+
+        # 初始化标记数量显示
+        markers = self._state_manager.get("markers", [])
+        marker_count = len(markers) if markers else 0
+        if self._marker_count_label:
+            self._marker_count_label.setText(f"标记: {marker_count}")
+
+        # 确保标记系统与状态管理器同步
+        if hasattr(self._state_manager, '_app_core') and self._state_manager._app_core.marker_system:
+            # 如果状态管理器中没有标记但标记系统中有的情况，进行同步
+            if not markers and self._state_manager._app_core.marker_system.get_markers():
+                self._state_manager._app_core.marker_system._sync_to_state_manager()
+
+    def _on_markers_changed(self, key: str, old_value: list, new_value: list) -> None:
+        """标记变化回调"""
+        if self._marker_count_label:
+            marker_count = len(new_value) if new_value else 0
+            self._marker_count_label.setText(f"标记: {marker_count}")
+
     def update_status_info(self, fps: int, grid_size: tuple, marker_count: int, camera_pos: tuple) -> None:
         """更新状态信息"""
         self._fps_label.setText(f"FPS: {fps}")
         self._grid_size_label.setText(f"网格: {grid_size[0]}x{grid_size[1]}")
-        self._marker_count_label.setText(f"标记: {marker_count}")
+        # 标记计数通过状态监听器统一处理，不在此处更新以避免冲突
         self._camera_pos_label.setText(f"相机: ({camera_pos[0]:.1f}, {camera_pos[1]:.1f})")

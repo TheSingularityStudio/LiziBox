@@ -3,6 +3,7 @@
 包含菜单栏、工具栏和嵌入的 OpenGL 渲染器
 """
 import sys
+import time
 from typing import Optional
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMenuBar, QStatusBar, QLabel, QSplitter
 from PyQt6.QtCore import Qt, QTimer, QPointF
@@ -34,6 +35,11 @@ class MainWindow(QMainWindow):
 
         # 定时器用于渲染循环
         self._render_timer = None
+
+        # FPS 计算相关
+        self._frame_count = 0
+        self._last_fps_time = time.time()
+        self._current_fps = 60
 
         # 初始化UI
         self._init_ui()
@@ -150,8 +156,25 @@ class MainWindow(QMainWindow):
         if self._opengl_widget:
             self._opengl_widget.update()
 
+        # 计算FPS
+        self._calculate_fps()
+
         # 更新状态栏
         self._update_status_bar()
+
+    def _calculate_fps(self) -> None:
+        """计算FPS"""
+        self._frame_count += 1
+        current_time = time.time()
+
+        # 每秒更新一次FPS
+        if current_time - self._last_fps_time >= 1.0:
+            self._current_fps = self._frame_count / (current_time - self._last_fps_time)
+            self._frame_count = 0
+            self._last_fps_time = current_time
+
+            # 更新状态管理器中的FPS
+            state_manager.set("current_fps", int(self._current_fps))
 
     def _update_status_bar(self) -> None:
         """更新状态栏信息"""
@@ -166,13 +189,13 @@ class MainWindow(QMainWindow):
 
         # Update control panel status info
         if self._control_panel:
-            marker_count = len(self._app_core.marker_system.get_markers()) if self._app_core.marker_system else 0
+            # 标记计数通过状态监听器统一处理，不在此处传递
             cam_x = state_manager.get("cam_x", 0.0)
             cam_y = state_manager.get("cam_y", 0.0)
             self._control_panel.update_status_info(
                 fps=fps,
                 grid_size=(width, height),
-                marker_count=marker_count,
+                marker_count=0,  # 不再使用此参数
                 camera_pos=(cam_x, cam_y)
             )
 
