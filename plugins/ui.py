@@ -69,10 +69,18 @@ class UIManager:
             try:
                 # 添加左键到按下按钮集合
                 self._mouse_buttons_pressed.add(1)  # 左键
-                
+
                 mx = state_manager.get("mouse_x", 0.0)
                 my = state_manager.get("mouse_y", 0.0)
-                self._selected_marker = self.controller.handle_mouse_left_press(mx, my)
+
+                # 检查鼠标模式
+                mouse_mode = state_manager.get("mouse_mode", "drag")
+                if mouse_mode == "place_marker":
+                    # 放置标记模式
+                    self.controller.place_vector_field(mx, my)
+                else:
+                    # 拖动模式（默认）
+                    self._selected_marker = self.controller.handle_mouse_left_press(mx, my)
             except Exception as e:
                 print(f"[错误] 处理鼠标左键按下时发生异常: {e}")
 

@@ -84,6 +84,9 @@ class MainWindow(QMainWindow):
         # 连接控制面板信号
         self._connect_control_panel_signals()
 
+        # 设置默认鼠标模式
+        self._app_core.state_manager.set("mouse_mode", "drag")
+
         # 设置渲染定时器
         self._render_timer = QTimer(self)
         self._render_timer.timeout.connect(self._render_frame)
@@ -150,6 +153,7 @@ class MainWindow(QMainWindow):
             self._control_panel.vector_scale_changed.connect(self._handle_vector_scale_change)
             self._control_panel.line_width_changed.connect(self._handle_line_width_change)
             self._control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
+            self._control_panel.mouse_mode_changed.connect(self._handle_mouse_mode_change)
 
     def _render_frame(self) -> None:
         """渲染一帧"""
@@ -268,6 +272,11 @@ class MainWindow(QMainWindow):
         """处理实时更新切换"""
         if self._app_core.state_manager:
             self._app_core.state_manager.set("enable_update", enabled)
+
+    def _handle_mouse_mode_change(self, mode: str) -> None:
+        """处理鼠标模式变化"""
+        if self._app_core.state_manager:
+            self._app_core.state_manager.set("mouse_mode", mode)
 
     def handle(self, event: Event) -> None:
         """处理事件"""

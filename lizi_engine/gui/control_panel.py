@@ -3,7 +3,7 @@
 包含按钮、滑块等用于控制向量场和渲染参数
 """
 from typing import Optional
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider, QCheckBox, QGroupBox, QSpinBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider, QCheckBox, QGroupBox, QSpinBox, QRadioButton, QButtonGroup
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
@@ -22,6 +22,7 @@ class ControlPanel(QWidget):
     vector_scale_changed = pyqtSignal(float)
     line_width_changed = pyqtSignal(float)
     realtime_update_toggled = pyqtSignal(bool)
+    mouse_mode_changed = pyqtSignal(str)
 
     def __init__(self, config_manager, state_manager, parent=None):
         super().__init__(parent)
@@ -105,6 +106,25 @@ class ControlPanel(QWidget):
 
         layout.addWidget(marker_group)
 
+        # 鼠标模式组
+        mouse_mode_group = QGroupBox("鼠标模式")
+        mouse_mode_layout = QVBoxLayout(mouse_mode_group)
+
+        self._mouse_mode_button_group = QButtonGroup(mouse_mode_group)
+
+        self._drag_radio_button = QRadioButton("拖动")
+        self._drag_radio_button.setToolTip("左键拖动标记")
+        self._drag_radio_button.setChecked(True)  # 默认选择拖动模式
+        self._mouse_mode_button_group.addButton(self._drag_radio_button, 0)
+        mouse_mode_layout.addWidget(self._drag_radio_button)
+
+        self._place_marker_radio_button = QRadioButton("放置标记")
+        self._place_marker_radio_button.setToolTip("左键放置标记")
+        self._mouse_mode_button_group.addButton(self._place_marker_radio_button, 1)
+        mouse_mode_layout.addWidget(self._place_marker_radio_button)
+
+        layout.addWidget(mouse_mode_group)
+
         # 渲染参数组
         render_group = QGroupBox("渲染参数")
         render_layout = QVBoxLayout(render_group)
@@ -182,6 +202,9 @@ class ControlPanel(QWidget):
         self._line_width_slider.valueChanged.connect(lambda v: self.line_width_changed.emit(v / 10.0))
         self._realtime_update_checkbox.toggled.connect(self.realtime_update_toggled.emit)
 
+        # 连接鼠标模式按钮组
+        self._mouse_mode_button_group.buttonClicked.connect(self._on_mouse_mode_changed)
+
     def _setup_state_listeners(self) -> None:
         """设置状态变更监听器"""
         # 监听FPS变化
@@ -253,6 +276,13 @@ class ControlPanel(QWidget):
         if self._marker_count_label:
             marker_count = len(new_value) if new_value else 0
             self._marker_count_label.setText(f"标记: {marker_count}")
+
+    def _on_mouse_mode_changed(self, button) -> None:
+        """鼠标模式变化回调"""
+        if button == self._drag_radio_button:
+            self.mouse_mode_changed.emit("drag")
+        elif button == self._place_marker_radio_button:
+            self.mouse_mode_changed.emit("place_marker")
 
     def update_status_info(self, fps: int, grid_size: tuple, marker_count: int, camera_pos: tuple) -> None:
         """更新状态信息"""
