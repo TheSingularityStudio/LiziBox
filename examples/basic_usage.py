@@ -93,10 +93,6 @@ def update_logic(grid, ui_manager, marker_system, vector_calculator):
 
         # 更新标记位置（可选）
         try:
-            #给每个标记添加摩擦力
-            for marker in marker_system.markers:
-                marker['vx'] *= 0.99
-                marker['vy'] *= 0.99
             # 更新向量场和标记
             marker_system.update_field_and_markers(grid)
         except Exception as e:

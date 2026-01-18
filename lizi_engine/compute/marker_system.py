@@ -40,7 +40,7 @@ class MarkerSystem:
         self.springs = []
         self._sync_to_state_manager()
 
-    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 1.0, damping: float = 0.1) -> None:
+    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 0.1, damping: float = 0.1) -> None:
         """连接两个标记为弹簧
 
         Args:
@@ -149,8 +149,9 @@ class MarkerSystem:
 
                 m["x"] = new_x
                 m["y"] = new_y
-                m["vx"] = vx
-                m["vy"] = vy
+                # 应用摩擦力
+                m["vx"] = vx * 0.99
+                m["vy"] = vy * 0.99
                 new_markers.append(m)
 
             except Exception as e:
@@ -218,16 +219,9 @@ class MarkerSystem:
                 strength = spring["strength"]
                 spring_force = strength * (distance - rest_length)
 
-                # 计算阻尼力
-                damping = spring["damping"]
-                relative_vx = other_marker["vx"] - current_marker["vx"]
-                relative_vy = other_marker["vy"] - current_marker["vy"]
-                damping_force_x = damping * relative_vx
-                damping_force_y = damping * relative_vy
-
                 # 总力
-                total_force_x = spring_force * nx - damping_force_x
-                total_force_y = spring_force * ny - damping_force_y
+                total_force_x = spring_force * nx
+                total_force_y = spring_force * ny
 
                 # 在当前标记位置添加力向量
                 self.add_vector_at_position(grid, x, y, total_force_x, total_force_y)
