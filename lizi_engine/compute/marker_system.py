@@ -40,7 +40,7 @@ class MarkerSystem:
         self.springs = []
         self._sync_to_state_manager()
 
-    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 0.1, damping: float = 0.1) -> None:
+    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 0.01, damping: float = 0.1) -> None:
         """连接两个标记为弹簧
 
         Args:
@@ -150,8 +150,8 @@ class MarkerSystem:
                 m["x"] = new_x
                 m["y"] = new_y
                 # 应用摩擦力
-                m["vx"] = vx * 0.99
-                m["vy"] = vy * 0.99
+                m["vx"] = vx * 0.98
+                m["vy"] = vy * 0.98
                 new_markers.append(m)
 
             except Exception as e:
