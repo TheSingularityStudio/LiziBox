@@ -225,11 +225,16 @@ class EventBus:
             # 同步处理事件
             for handler in handlers:
                 try:
+                    # 检查处理器是否还有效（避免已删除对象的访问）
+                    if hasattr(handler, '_destroyed') and handler._destroyed:
+                        continue
                     handler.handle(event)
                 except Exception as e:
-                    print(f"[事件系统] 处理事件时出错: {e}")
-                    # 触发错误处理事件
-                    self._publish_error_event(event, e)
+                    # 过滤掉已删除对象的错误
+                    if "has been deleted" not in str(e):
+                        print(f"[事件系统] 处理事件时出错: {e}")
+                        # 触发错误处理事件
+                        self._publish_error_event(event, e)
 
             # 如果启用异步处理，发布异步事件
             if self._async_enabled and event.type not in [EventType.ASYNC_EVENT_PROCESSED, EventType.APP_INITIALIZED]:

@@ -33,12 +33,16 @@ class OpenGLWidget(QOpenGLWidget):
 
         # 渲染状态
         self._initialized = False
+        self._destroyed = False
 
         # 订阅事件
         event_bus.subscribe(EventType.GRID_UPDATED, self)
         event_bus.subscribe(EventType.VIEW_RESET, self)
         event_bus.subscribe(EventType.TOGGLE_GRID, self)
         event_bus.subscribe(EventType.VIEW_CHANGED, self)
+
+        # 连接销毁信号
+        self.destroyed.connect(self._on_destroyed)
 
     def initializeGL(self) -> None:
         """初始化OpenGL"""
@@ -106,6 +110,9 @@ class OpenGLWidget(QOpenGLWidget):
                 self._renderer.render_grid(grid, cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
                 self._renderer.render_vector_field(grid, cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
 
+            # 渲染弹簧连接线
+            self._renderer.render_springs(cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
+
         except Exception as e:
             print(f"[OpenGL Widget] 渲染错误: {e}")
 
@@ -115,12 +122,27 @@ class OpenGLWidget(QOpenGLWidget):
 
     def cleanup(self) -> None:
         """清理资源"""
+        # 设置销毁标志，防止进一步的事件处理
+        self._destroyed = True
+
+        # 取消订阅事件，避免在对象删除后仍被调用
+        event_bus.unsubscribe(EventType.GRID_UPDATED, self)
+        event_bus.unsubscribe(EventType.VIEW_RESET, self)
+        event_bus.unsubscribe(EventType.TOGGLE_GRID, self)
+        event_bus.unsubscribe(EventType.VIEW_CHANGED, self)
+
         if self._renderer:
             self._renderer.cleanup()
         self._initialized = False
 
+    def _on_destroyed(self) -> None:
+        """对象销毁时的处理"""
+        self._destroyed = True
+
     def handle(self, event: Event) -> None:
         """处理事件"""
+        if self._destroyed:
+            return
         if event.type in [EventType.GRID_UPDATED, EventType.VIEW_RESET, EventType.TOGGLE_GRID, EventType.VIEW_CHANGED]:
             # 触发重绘
             self.update()

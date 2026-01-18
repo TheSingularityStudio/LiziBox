@@ -125,9 +125,14 @@ class StateManager:
         if key in self._listeners:
             for callback in self._listeners[key]:
                 try:
+                    # 检查回调函数是否仍然有效（避免已删除对象的访问）
+                    if hasattr(callback, '__self__') and hasattr(callback.__self__, '_destroyed') and callback.__self__._destroyed:
+                        continue
                     callback(key, old_value, new_value)
                 except Exception as e:
-                    print(f"[状态管理] 通知监听器时出错: {e}")
+                    # 过滤掉已删除对象的错误
+                    if "has been deleted" not in str(e):
+                        print(f"[状态管理] 通知监听器时出错: {e}")
 
     def get_change_history(self, key: Optional[str] = None, limit: Optional[int] = None) -> List[StateChange]:
         """获取变更历史"""

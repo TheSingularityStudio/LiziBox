@@ -273,6 +273,9 @@ class VectorFieldRenderer(EventHandler):
         if not show_grid :
             return
 
+        # 设置网格线条宽度
+        glLineWidth(1.0)
+
         h, w = grid.shape[:2]
         vertices = []
 
@@ -400,6 +403,76 @@ class VectorFieldRenderer(EventHandler):
         glDrawArrays(GL_POINTS, 0, len(markers))
 
         # 清理绑定
+        glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glUseProgram(0)
+
+    def render_springs(self, cell_size: float = 1.0,
+                       cam_x: float = 0.0, cam_y: float = 0.0, cam_zoom: float = 1.0,
+                       viewport_width: int = 800, viewport_height: int = 600) -> None:
+        """渲染弹簧连接线"""
+        if not self._initialized:
+            self.initialize()
+
+        markers = self._state_manager.get("markers", [])
+        springs = self._state_manager.get("springs", [])
+
+        # 创建标记ID到位置的映射
+        marker_positions = {m["id"]: (m["x"] * cell_size, m["y"] * cell_size) for m in markers}
+
+        # 构建顶点数组，每个弹簧连接两条线 (起点和终点)
+        vertices = []
+        for spring in springs:
+            id1 = spring["id1"]
+            id2 = spring["id2"]
+            if id1 in marker_positions and id2 in marker_positions:
+                x1, y1 = marker_positions[id1]
+                x2, y2 = marker_positions[id2]
+                # 绿色弹簧线
+                vertices.extend([x1, y1, 0.0, 1.0, 0.0])  # 起点
+                vertices.extend([x2, y2, 0.0, 1.0, 0.0])  # 终点
+
+        # 禁用深度测试，确保弹簧线在最前面
+        glDisable(GL_DEPTH_TEST)
+
+        # 绑定VAO和VBO
+        glBindVertexArray(self._vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
+
+        # 上传顶点数据
+        glBufferData(GL_ARRAY_BUFFER, len(vertices) * 4, np.array(vertices, dtype=np.float32), GL_DYNAMIC_DRAW)
+
+        # 设置顶点属性
+        pos_loc = self._shader_program.get_attribute_location("a_pos")
+        col_loc = self._shader_program.get_attribute_location("a_col")
+
+        if pos_loc >= 0:
+            glEnableVertexAttribArray(pos_loc)
+            glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 5 * 4, ctypes.c_void_p(0))
+
+        if col_loc >= 0:
+            glEnableVertexAttribArray(col_loc)
+            glVertexAttribPointer(col_loc, 3, GL_FLOAT, GL_FALSE, 5 * 4, ctypes.c_void_p(2 * 4))
+
+        # 使用着色器程序
+        self._shader_program.use()
+
+        # 设置uniform变量
+        half_w = (viewport_width / 2.0) / cam_zoom
+        half_h = (viewport_height / 2.0) / cam_zoom
+        self._shader_program.set_uniform_vec2("u_center", (cam_x, cam_y))
+        self._shader_program.set_uniform_vec2("u_half", (half_w, half_h))
+
+        # 设置线条宽度
+        glLineWidth(2.0)  # 增加线条宽度使其更明显
+
+        # 绘制弹簧线
+        glDrawArrays(GL_LINES, 0, len(vertices) // 5)
+
+        # 重新启用深度测试
+        glEnable(GL_DEPTH_TEST)
+
+        # 解绑
         glBindVertexArray(0)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glUseProgram(0)
