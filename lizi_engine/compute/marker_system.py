@@ -72,6 +72,7 @@ class MarkerSystem:
         spring = {"id1": id1, "id2": id2, "rest_length": rest_length, "strength": strength, "damping": damping}
         self.springs.append(spring)
         print(f"Spring connected between marker {id1} and {id2}")
+        self._sync_to_state_manager()
 
     def get_markers(self) -> List[Dict[str, float]]:
         """获取所有标记
@@ -234,9 +235,10 @@ class MarkerSystem:
                 self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], -total_force_x, -total_force_y)
 
     def _sync_to_state_manager(self) -> None:
-        """将标记列表同步到状态管理器"""
+        """将标记列表和弹簧连接同步到状态管理器"""
         try:
             self.app_core.state_manager.set("markers", list(self.markers))
+            self.app_core.state_manager.set("springs", list(self.springs))
         except Exception:
             pass
 

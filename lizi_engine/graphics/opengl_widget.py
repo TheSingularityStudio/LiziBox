@@ -110,6 +110,9 @@ class OpenGLWidget(QOpenGLWidget):
                 self._renderer.render_grid(grid, cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
                 self._renderer.render_vector_field(grid, cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
 
+            # 渲染弹簧连接线
+            self._renderer.render_springs(cell_size, cam_x, cam_y, cam_zoom, viewport_width, viewport_height)
+
         except Exception as e:
             print(f"[OpenGL Widget] 渲染错误: {e}")
 
