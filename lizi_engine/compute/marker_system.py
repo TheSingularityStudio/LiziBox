@@ -16,7 +16,7 @@ class MarkerSystem:
         # 标记列表，存储浮点网格坐标 {'id':int, 'x':float,'y':float,'mag':float,'vx':float,'vy':float}
         self.markers = []
         self.marker_id_counter = 0
-        # 弹簧连接列表 [{'id1':int, 'id2':int, 'rest_length':float, 'strength':float}]
+        # 弹簧连接列表 [{'id1':int, 'id2':int, 'rest_length':float, 'strength':float, 'damping':float}]
         self.springs = []
 
     def add_marker(self, x: float, y: float, mag: float = 1.0, vx: float = 0.0, vy: float = 0.0) -> None:
@@ -40,7 +40,7 @@ class MarkerSystem:
         self.springs = []
         self._sync_to_state_manager()
 
-    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 1.0) -> None:
+    def connect_spring(self, id1: int, id2: int, rest_length: float = None, strength: float = 1.0, damping: float = 0.1) -> None:
         """连接两个标记为弹簧
 
         Args:
@@ -48,6 +48,7 @@ class MarkerSystem:
             id2: 第二个标记的ID
             rest_length: 弹簧的自然长度（可选，默认使用当前距离）
             strength: 弹簧强度（可选，默认1.0）
+            damping: 弹簧阻尼系数（可选，默认0.1）
         """
         # 检查标记是否存在
         marker1 = next((m for m in self.markers if m["id"] == id1), None)
@@ -68,7 +69,7 @@ class MarkerSystem:
             print(f"Spring connection between {id1} and {id2} already exists")
             return
 
-        spring = {"id1": id1, "id2": id2, "rest_length": rest_length, "strength": strength}
+        spring = {"id1": id1, "id2": id2, "rest_length": rest_length, "strength": strength, "damping": damping}
         self.springs.append(spring)
         print(f"Spring connected between marker {id1} and {id2}")
 
@@ -129,6 +130,10 @@ class MarkerSystem:
                 # 应用弹簧向量到网格
                 self._apply_spring_vectors_to_grid(grid, m["id"], x, y)
 
+                # 应用重力向量到网格（如果启用）
+                if self.app_core.state_manager.get("gravity_enabled", False):
+                    self.add_vector_at_position(grid, m["x"], m["y"], 0.0, 0.1)
+
                 # 限制速度不超过单元格大小
                 if (vx ** 2 + vy ** 2) ** 0.5 > cell_size:  # 限制速度不超过单元格大小
                     vx = vx / (vx ** 2 + vy ** 2) ** 0.5 * cell_size
@@ -183,6 +188,10 @@ class MarkerSystem:
 
     def _apply_spring_vectors_to_grid(self, grid: np.ndarray, marker_id: int, x: float, y: float) -> None:
         """在标记位置添加弹簧向量到网格"""
+        current_marker = next((m for m in self.markers if m["id"] == marker_id), None)
+        if current_marker is None:
+            return
+
         for spring in self.springs:
             if spring["id1"] == marker_id or spring["id2"] == marker_id:
                 # 找到另一个标记
@@ -203,22 +212,26 @@ class MarkerSystem:
                 nx = dx / distance
                 ny = dy / distance
 
-                # 计算向量大小
+                # 计算弹簧力（胡克定律）
                 rest_length = spring["rest_length"]
                 strength = spring["strength"]
+                spring_force = strength * (distance - rest_length)
 
-                if distance < rest_length:
-                    # 距离太近，在两个标记位置分别添加方向向外的向量
-                    # 在当前标记位置添加向外的向量
-                    self.add_vector_at_position(grid, x, y, -nx * strength, -ny * strength)
-                    # 在另一个标记位置添加向外的向量
-                    self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], nx * strength, ny * strength)
-                else:
-                    # 距离太远，在两个标记位置分别添加方向向内的向量
-                    # 在当前标记位置添加向内的向量
-                    self.add_vector_at_position(grid, x, y, nx * strength, ny * strength)
-                    # 在另一个标记位置添加向内的向量
-                    self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], -nx * strength, -ny * strength)
+                # 计算阻尼力
+                damping = spring["damping"]
+                relative_vx = other_marker["vx"] - current_marker["vx"]
+                relative_vy = other_marker["vy"] - current_marker["vy"]
+                damping_force_x = damping * relative_vx
+                damping_force_y = damping * relative_vy
+
+                # 总力
+                total_force_x = spring_force * nx - damping_force_x
+                total_force_y = spring_force * ny - damping_force_y
+
+                # 在当前标记位置添加力向量
+                self.add_vector_at_position(grid, x, y, total_force_x, total_force_y)
+                # 在另一个标记位置添加相反的力向量
+                self.add_vector_at_position(grid, other_marker["x"], other_marker["y"], -total_force_x, -total_force_y)
 
     def _sync_to_state_manager(self) -> None:
         """将标记列表同步到状态管理器"""

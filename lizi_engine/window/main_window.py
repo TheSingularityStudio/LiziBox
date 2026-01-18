@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
             self._control_panel.line_width_changed.connect(self._handle_line_width_change)
             self._control_panel.realtime_update_toggled.connect(self._handle_realtime_toggle)
             self._control_panel.mouse_mode_changed.connect(self._handle_mouse_mode_change)
+            self._control_panel.gravity_toggled.connect(self._handle_gravity_toggle)
 
     def _render_frame(self) -> None:
         """渲染一帧"""
@@ -278,6 +279,11 @@ class MainWindow(QMainWindow):
         if self._app_core.state_manager:
             self._app_core.state_manager.set("mouse_mode", mode)
 
+    def _handle_gravity_toggle(self, enabled: bool) -> None:
+        """处理重力切换"""
+        if self._app_core.state_manager:
+            self._app_core.state_manager.set("gravity_enabled", enabled)
+
     def handle(self, event: Event) -> None:
         """处理事件"""
         if event.type == EventType.APP_INITIALIZED:
@@ -291,6 +297,9 @@ class MainWindow(QMainWindow):
         # 停止渲染定时器
         if self._render_timer:
             self._render_timer.stop()
+
+        # 取消订阅事件，避免在对象删除后仍被调用
+        event_bus.unsubscribe(EventType.APP_INITIALIZED, self)
 
         # 清理OpenGL资源
         if self._opengl_widget:

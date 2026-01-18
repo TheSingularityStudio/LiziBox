@@ -23,6 +23,7 @@ class ControlPanel(QWidget):
     line_width_changed = pyqtSignal(float)
     realtime_update_toggled = pyqtSignal(bool)
     mouse_mode_changed = pyqtSignal(str)
+    gravity_toggled = pyqtSignal(bool)
 
     def __init__(self, config_manager, state_manager, parent=None):
         super().__init__(parent)
@@ -41,6 +42,7 @@ class ControlPanel(QWidget):
         self._vector_scale_slider = None
         self._line_width_slider = None
         self._realtime_update_checkbox = None
+        self._gravity_checkbox = None
 
         # 状态标签
         self._fps_label = None
@@ -170,6 +172,12 @@ class ControlPanel(QWidget):
         self._realtime_update_checkbox.setToolTip("启用/禁用实时向量场更新")
         render_layout.addWidget(self._realtime_update_checkbox)
 
+        # 重力复选框
+        self._gravity_checkbox = QCheckBox("启用重力")
+        self._gravity_checkbox.setChecked(False)
+        self._gravity_checkbox.setToolTip("启用/禁用重力效果")
+        render_layout.addWidget(self._gravity_checkbox)
+
         layout.addWidget(render_group)
 
         # 状态信息组
@@ -206,6 +214,7 @@ class ControlPanel(QWidget):
         self._vector_scale_slider.valueChanged.connect(lambda v: self.vector_scale_changed.emit(v / 100.0))
         self._line_width_slider.valueChanged.connect(lambda v: self.line_width_changed.emit(v / 10.0))
         self._realtime_update_checkbox.toggled.connect(self.realtime_update_toggled.emit)
+        self._gravity_checkbox.toggled.connect(self.gravity_toggled.emit)
 
         # 连接鼠标模式按钮组
         self._mouse_mode_button_group.buttonClicked.connect(self._on_mouse_mode_changed)
