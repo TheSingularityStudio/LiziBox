@@ -13,6 +13,7 @@ from lizi_engine.core.app import AppCore, GUI_AVAILABLE
 from lizi_engine.core.state import state_manager
 from lizi_engine.compute.vector_field import vector_calculator
 from lizi_engine.core.plugin import UIManager, Controller, MarkerSystem, add_inward_edge_vectors
+from PyQt6.QtCore import QTimer
 
 def main():
     """主函数"""
@@ -55,19 +56,11 @@ def main():
     # 初始化 UI 管理器（适配GUI）
     ui_manager = UIManager(app_core, None, controller, marker_system)  # window参数设为None
 
-    def _on_space():
-        # 空格键：重新生成切线模式并重置视图
-        print("[示例] 重新生成切线模式")
-        vector_calculator.create_tangential_pattern(grid, magnitude=1.0)
-        try:
-            app_core.view_manager.reset_view(grid.shape[1], grid.shape[0])
-        except Exception:
-            pass
-
-    ui_manager.register_callbacks(grid, on_space=_on_space)
+    # 注册回调函数
+    ui_manager.register_callbacks(grid)
 
     # 设置定时器用于更新逻辑
-    from PyQt6.QtCore import QTimer
+    
     update_timer = QTimer()
     update_timer.timeout.connect(lambda: update_logic(grid, ui_manager, marker_system, vector_calculator))
     update_timer.start(16)  # ~60 FPS
